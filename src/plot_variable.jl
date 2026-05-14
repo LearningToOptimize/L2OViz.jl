@@ -22,6 +22,14 @@ function plot_variable(var_data::Matrix...; solver_names=nothing, x=nothing, xla
     first_data = var_data[1]
     n_entries, n_instances = size(first_data)
 
+    for (i, d) in enumerate(var_data)
+        @assert size(d) == (n_entries, n_instances) "All data matrices must have size ($(n_entries), $(n_instances)); solver $(i) has size $(size(d))"
+    end
+
+    if !isnothing(solver_names)
+        @assert length(solver_names) == n_solvers "solver_names must have length $n_solvers"
+    end
+
     effective_names = isnothing(solver_names) ? ["Solver $i" for i in 1:n_solvers] : solver_names
 
     x_vals = isnothing(x) ? collect(1:n_instances) : x
