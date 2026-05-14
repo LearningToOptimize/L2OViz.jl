@@ -8,8 +8,8 @@ Return the indices of the `vis_threshold` highest-scoring entries, sorted ascend
 If `length(scores) ≤ vis_threshold`, returns all indices and `filtered = false`.
 """
 function select_variable_entries(scores::Vector{<:Real}, vis_threshold::Int)
-    n = length(scores)
-    n <= vis_threshold && return collect(1:n), false
+    @assert vis_threshold > 0 "vis_threshold must be positive"
+    length(scores) <= vis_threshold && return collect(1:length(scores)), false
     return sort(partialsortperm(scores, 1:vis_threshold, rev=true)), true
 end
 
@@ -17,68 +17,61 @@ end
     select_matrix_entries(entry_scores, I, J, vis_threshold, symmetric)
         -> (I_plot, J_plot, data_row_indices, sel_rows, sel_cols, filtered::Bool)
 
-Determine which matrix entries to display, with optional thresholding and symmetric mirroring.
+Determine which matrix entries to display, with optional thresholding.
 
-Row/column significance = max entry score among entries in that row/column.
-Filtering selects the top-vis_threshold rows and columns (independently when `symmetric = false`).
-
-When `symmetric = true`, off-diagonal entries in the (filtered) COO are mirrored so the full
-symmetric subgrid is shown. `data_row_indices[k]` maps back into the original COO rows of
-var_data; mirrored entries reuse the same index as their originals.
+At most `vis_threshold` rows and at most `vis_threshold` columns are selected. For the
+non-symmetric case, rows and columns are scored and selected independently. For the
+symmetric case, row and column significance are the same, and row-column pairs are selected
+together. Returns early without computing scores when both the number of rows and the number
+of columns are within the threshold. `data_row_indices[k]` maps back into the original COO
+rows of var_data.
 """
 function select_matrix_entries(entry_scores::Vector{<:Real},
                                 I::Vector{Int}, J::Vector{Int},
-                                vis_threshold::Union{Int, Nothing},
+                                vis_threshold::Int,
                                 symmetric::Bool)
-    n_nonzeros = length(I)
-    needs_filter = !isnothing(vis_threshold) && n_nonzeros > vis_threshold
+    @assert vis_threshold > 0 "vis_threshold must be positive"
+
+    unique_rows = sort(unique(I))
+    unique_cols = sort(unique(J))
+
+    # Same early termination for both symmetric and non-symmetric
+    length(unique_rows) <= vis_threshold && length(unique_cols) <= vis_threshold &&
+        return I, J, collect(1:length(I)), unique_rows, unique_cols, false
 
     if symmetric
-        # Build per-index significance: max score of all entries where the index appears
-        all_indices = sort(unique(vcat(I, J)))
-        index_scores = Dict{Int, Float64}()
-        for k in 1:n_nonzeros
+        # Score each index by the max significance of any entry it participates in (as
+        # row or column). For a symmetric matrix these are equivalent; scoring both I[k]
+        # and J[k] ensures that an index appearing only as a row in the stored triangle
+        # still receives the significance of its off-diagonal entries.
+        col_scores = Dict{Int, Float64}()
+        for k in 1:length(I)
             s = entry_scores[k]
-            index_scores[I[k]] = max(get(index_scores, I[k], 0.0), s)
-            index_scores[J[k]] = max(get(index_scores, J[k], 0.0), s)
+            col_scores[I[k]] = max(get(col_scores, I[k], 0.0), s)
+            col_scores[J[k]] = max(get(col_scores, J[k], 0.0), s)
         end
 
-        if needs_filter
-            k_sel = floor(Int, vis_threshold)
-            sorted_idx = sort(all_indices, by=i -> index_scores[i], rev=true)
-            sel_indices = sort(sorted_idx[1:min(k_sel, end)])
-        else
-            sel_indices = all_indices
-        end
-
+        sorted_cols = sort(unique_cols, by=c -> col_scores[c], rev=true)
+        sel_indices = sort(sorted_cols[1:min(vis_threshold, end)])
         sel_set = Set(sel_indices)
-        orig_idx = findall(k -> I[k] ∈ sel_set && J[k] ∈ sel_set, 1:n_nonzeros)
-
-        return I[orig_idx], J[orig_idx], orig_idx, sel_indices, sel_indices, needs_filter
+        orig_idx = findall(k -> I[k] ∈ sel_set && J[k] ∈ sel_set, 1:length(I))
+        return I[orig_idx], J[orig_idx], orig_idx, sel_indices, sel_indices, true
 
     else
-        # Score rows and columns independently using a single O(n_nonzeros) pass
+        # Score rows and columns independently
         row_scores = Dict{Int, Float64}()
         col_scores = Dict{Int, Float64}()
-        for k in 1:n_nonzeros
+        for k in 1:length(I)
             s = entry_scores[k]
             row_scores[I[k]] = max(get(row_scores, I[k], 0.0), s)
             col_scores[J[k]] = max(get(col_scores, J[k], 0.0), s)
         end
 
-        unique_rows = sort(collect(keys(row_scores)))
-        unique_cols = sort(collect(keys(col_scores)))
-
-        if !needs_filter
-            return I, J, collect(1:n_nonzeros), unique_rows, unique_cols, false
-        end
-
-        k_sel = floor(Int, vis_threshold)
-        sel_rows = sort(sort(unique_rows, by=r -> row_scores[r], rev=true)[1:min(k_sel, end)])
-        sel_cols = sort(sort(unique_cols, by=c -> col_scores[c], rev=true)[1:min(k_sel, end)])
+        sel_rows = sort(sort(unique_rows, by=r -> row_scores[r], rev=true)[1:min(vis_threshold, end)])
+        sel_cols = sort(sort(unique_cols, by=c -> col_scores[c], rev=true)[1:min(vis_threshold, end)])
         sel_row_set, sel_col_set = Set(sel_rows), Set(sel_cols)
 
-        orig_idx = findall(k -> I[k] ∈ sel_row_set && J[k] ∈ sel_col_set, 1:n_nonzeros)
+        orig_idx = findall(k -> I[k] ∈ sel_row_set && J[k] ∈ sel_col_set, 1:length(I))
         return I[orig_idx], J[orig_idx], orig_idx, sel_rows, sel_cols, true
     end
 end
