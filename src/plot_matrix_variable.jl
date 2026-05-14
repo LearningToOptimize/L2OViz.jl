@@ -7,7 +7,7 @@
 
 Visualize a matrix variable (given in COO format) across multiple problem instances.
 
-Pass `I`, `J` (COO indices), then one or more `(n_nonzeros × n_instances)` data matrices,
+Pass `I`, `J` (COO indices), then one or more `(nnz × n_instances)` data matrices,
 one per solver. Series are overlaid on each subplot with a shared legend. Solver names
 default to "Solver 1", "Solver 2", …
 
@@ -15,11 +15,11 @@ default to "Solver 1", "Solver 2", …
 - `m`/`n` fix the number of rows/columns; otherwise `maximum(I)`/`maximum(J)` is used.
 - When `symmetric = true`, the grid is forced square; only one of `m`/`n` is needed.
 
-**Thresholding**: when `n_nonzeros > vis_threshold`, only the top-`vis_threshold` most
-significant rows *and* columns are shown in a compressed grid. Row/column score is
-the max entry score in that row/column; scores come from `significance_fn` (default: 1-norm)
-applied to values concatenated across all solvers. For `symmetric = true`, the top
-`vis_threshold` row-column pairs are selected.
+**Thresholding**: when `unique(I) > vis_threshold` or `unique(J) > vis_threshold`, only
+the top-`vis_threshold` most significant rows *and* columns are shown in a compressed
+grid. Row/column score is the max entry score in that row/column; scores come from
+`significance_fn` (default: 1-norm) applied to values concatenated across all solvers.
+For `symmetric = true`, the top `vis_threshold` row-column pairs are selected.
 
 **Symmetric mode** (`symmetric = true`): the grid is forced square and only column significance
 is used for index selection. The COO may store only one triangle; entries are shown as-is.
@@ -32,9 +32,9 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, var_data::Matrix..
     @assert length(var_data) >= 1 "At least one data matrix must be provided"
     n_solvers = length(var_data)
     first_data = var_data[1]
-    n_nonzeros, n_instances = size(first_data)
-    @assert length(I) == n_nonzeros "Length of I must equal number of rows in var_data"
-    @assert length(J) == n_nonzeros "Length of J must equal number of rows in var_data"
+    nnz, n_instances = size(first_data)
+    @assert length(I) == nnz "Length of I must equal number of rows in var_data"
+    @assert length(J) == nnz "Length of J must equal number of rows in var_data"
 
     effective_names = isnothing(solver_names) ? ["Solver $i" for i in 1:n_solvers] : solver_names
 
@@ -63,7 +63,7 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, var_data::Matrix..
     x_label = isnothing(x) ? "Instance" : (isnothing(xlabel) ? "Unknown Parameter" : xlabel)
 
     # Combine scores across all solvers for entry significance
-    entry_scores = [significance_fn(vcat([d[k, :] for d in var_data]...)) for k in 1:n_nonzeros]
+    entry_scores = [significance_fn(vcat([d[k, :] for d in var_data]...)) for k in 1:nnz]
     I_plot, J_plot, data_row_idx, sel_rows, sel_cols, filtered =
         select_matrix_entries(entry_scores, I, J, vis_threshold, symmetric)
 
