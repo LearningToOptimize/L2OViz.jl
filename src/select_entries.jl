@@ -40,18 +40,16 @@ function select_matrix_entries(entry_scores::Vector{<:Real},
         return I, J, collect(1:length(I)), unique_rows, unique_cols, false
 
     if symmetric
-        # Score each index by the max significance of any entry it participates in (as
-        # row or column). For a symmetric matrix these are equivalent; scoring both I[k]
-        # and J[k] ensures that an index appearing only as a row in the stored triangle
-        # still receives the significance of its off-diagonal entries.
+        # Score each column by the maximum of the scores of its entries. Since we assume I and J
+        # do not contain both (i, j) and (j, i), we need to consider the columns of both T and T'
         col_scores = Dict{Int, Float64}()
         for k in 1:length(I)
             s = entry_scores[k]
-            col_scores[I[k]] = max(get(col_scores, I[k], 0.0), s)
-            col_scores[J[k]] = max(get(col_scores, J[k], 0.0), s)
+            col_scores[J[k]] = max(get(col_scores, J[k], 0.0), s)  # max over the columns of T
+            col_scores[I[k]] = max(get(col_scores, I[k], 0.0), s)  # max over the columns of T'
         end
-
-        sorted_cols = sort(unique_cols, by=c -> col_scores[c], rev=true)
+        # sort columns of the original matrix (union of columns of T and T') by score
+        sorted_cols = sort(union(unique_rows, unique_cols), by=c -> col_scores[c], rev=true)
         sel_indices = sort(sorted_cols[1:min(vis_threshold, end)])
         sel_set = Set(sel_indices)
         orig_idx = findall(k -> I[k] ∈ sel_set && J[k] ∈ sel_set, 1:length(I))
