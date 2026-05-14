@@ -21,16 +21,14 @@ function plot_variable(var_data::Matrix...; solver_names=nothing, x=nothing, xla
     n_solvers = length(var_data)
     first_data = var_data[1]
     n_entries, n_instances = size(first_data)
-
     for (i, d) in enumerate(var_data)
         @assert size(d) == (n_entries, n_instances) "All data matrices must have size ($(n_entries), $(n_instances)); solver $(i) has size $(size(d))"
     end
-
-    if !isnothing(solver_names)
+    if isnothing(solver_names)
+        solver_names = ["Solver $i" for i in 1:n_solvers]
+    else
         @assert length(solver_names) == n_solvers "solver_names must have length $n_solvers"
     end
-
-    effective_names = isnothing(solver_names) ? ["Solver $i" for i in 1:n_solvers] : solver_names
 
     if isnothing(x)
         x = collect(1:n_instances)
@@ -39,7 +37,7 @@ function plot_variable(var_data::Matrix...; solver_names=nothing, x=nothing, xla
         @assert length(x) == n_instances "Length of x must equal number of instances ($n_instances)"
         x_label = isnothing(xlabel) ? "Unknown Parameter" : xlabel
     end
-    
+
     # Compute significance scores (combined across all solvers) and select entries
     scores = [significance_fn(vcat([d[k, :] for d in var_data]...)) for k in 1:n_entries]
     selected_indices, _ = select_variable_entries(scores, vis_threshold)
@@ -69,7 +67,7 @@ function plot_variable(var_data::Matrix...; solver_names=nothing, x=nothing, xla
         end
     end
 
-    Legend(fig[n_rows + 1, 1:n_cols], legend_handles, effective_names;
+    Legend(fig[n_rows + 1, 1:n_cols], legend_handles, solver_names;
            orientation=:horizontal, tellwidth=false)
 
     return fig

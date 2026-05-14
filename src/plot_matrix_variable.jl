@@ -35,8 +35,14 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, var_data::Matrix..
     nnz, n_instances = size(first_data)
     @assert length(I) == nnz "Length of I must equal number of rows in var_data"
     @assert length(J) == nnz "Length of J must equal number of rows in var_data"
-
-    effective_names = isnothing(solver_names) ? ["Solver $i" for i in 1:n_solvers] : solver_names
+    for (i, d) in enumerate(var_data)
+        @assert size(d) == (nnz, n_instances) "All data matrices must have size ($(nnz), $(n_instances)); solver $(i) has size $(size(d))"
+    end
+    if isnothing(solver_names)
+        solver_names = ["Solver $i" for i in 1:n_solvers]
+    else
+        @assert length(solver_names) == n_solvers "solver_names must have length $n_solvers"
+    end
 
     # Resolve full matrix dimensions
     if symmetric
@@ -106,7 +112,7 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, var_data::Matrix..
         end
     end
 
-    Legend(fig[2, 1], legend_handles, effective_names;
+    Legend(fig[2, 1], legend_handles, solver_names;
            orientation=:horizontal, tellwidth=false)
 
     return fig
