@@ -32,9 +32,14 @@ function plot_variable(var_data::Matrix...; solver_names=nothing, x=nothing, xla
 
     effective_names = isnothing(solver_names) ? ["Solver $i" for i in 1:n_solvers] : solver_names
 
-    x_vals = isnothing(x) ? collect(1:n_instances) : x
-    x_label = isnothing(x) ? "Instance" : (isnothing(xlabel) ? "Unknown Parameter" : xlabel)
-
+    if isnothing(x)
+        x = collect(1:n_instances)
+        x_label = "Instance"
+    else
+        @assert length(x) == n_instances "Length of x must equal number of instances ($n_instances)"
+        x_label = isnothing(xlabel) ? "Unknown Parameter" : xlabel
+    end
+    
     # Compute significance scores (combined across all solvers) and select entries
     scores = [significance_fn(vcat([d[k, :] for d in var_data]...)) for k in 1:n_entries]
     selected_indices, _ = select_variable_entries(scores, vis_threshold)
@@ -57,7 +62,7 @@ function plot_variable(var_data::Matrix...; solver_names=nothing, x=nothing, xla
         ax = Axis(fig[grid_row, grid_col]; title=entry_label, xlabel=x_label, ylabel="Value")
 
         for (i, d) in enumerate(var_data)
-            p = scatter!(ax, x_vals, d[orig_k, :]; color=solver_colors[i])
+            p = scatter!(ax, x, d[orig_k, :]; color=solver_colors[i])
             if plot_k == 1
                 push!(legend_handles, p)
             end

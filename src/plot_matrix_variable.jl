@@ -59,8 +59,13 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, var_data::Matrix..
     @assert all(1 .<= I .<= effective_m_full) "All row indices must be in [1, m=$effective_m_full]"
     @assert all(1 .<= J .<= effective_n_full) "All column indices must be in [1, n=$effective_n_full]"
 
-    x_vals = isnothing(x) ? collect(1:n_instances) : x
-    x_label = isnothing(x) ? "Instance" : (isnothing(xlabel) ? "Unknown Parameter" : xlabel)
+    if isnothing(x)
+        x = collect(1:n_instances)
+        x_label = "Instance"
+    else
+        @assert length(x) == n_instances "Length of x must equal number of instances ($n_instances)"
+        x_label = isnothing(xlabel) ? "Unknown Parameter" : xlabel
+    end
 
     # Combine scores across all solvers for entry significance
     entry_scores = [significance_fn(vcat([d[k, :] for d in var_data]...)) for k in 1:nnz]
@@ -94,7 +99,7 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, var_data::Matrix..
         ax = Axis(gl[gr, gc]; title=entry_label, xlabel=x_label, ylabel="Value")
 
         for (i, d) in enumerate(var_data)
-            p = scatter!(ax, x_vals, d[data_row_idx[k], :]; color=solver_colors[i])
+            p = scatter!(ax, x, d[data_row_idx[k], :]; color=solver_colors[i])
             if k == 1
                 push!(legend_handles, p)
             end
