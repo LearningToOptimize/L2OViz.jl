@@ -15,8 +15,8 @@ If not provided, solver names default to "Solver 1", "Solver 2", …
 symmetry pairs. Entries are visualized for only the given half of the matrix specified
 by the coordinates.
 
-**Thresholding**: if `unique(I) > vis_threshold` or `unique(J) > vis_threshold`, only
-the top-`vis_threshold` most significant rows *and* columns are visualized. `significance_fn`
+**Thresholding**: if `length(unique(I)) > vis_threshold` or `length(unique(J)) > vis_threshold`,
+only the top-`vis_threshold` most significant rows *and* columns are visualized. `significance_fn`
 (default: 1-norm) is applied to `vcat([d[k, :] for d in var_data]...)` to get the score of
 coordinate (I[k], J[k]). Score of each row/column is the max entry score in that row/column.
 
