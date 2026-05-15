@@ -8,7 +8,6 @@ This can be useful when the variables correspond to a graph for example.
 
 ## Data Format Specifications
 For each variable, the values should be stored in a `Matrix` where each row contains the values of the variable in each problem instance.
-Each `Matrix` should have the same number of columns, `n_instances`.
 For example,
 ```Julia
 y_dim = 5

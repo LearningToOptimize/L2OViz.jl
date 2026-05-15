@@ -7,7 +7,7 @@ Visualize a vector variable across multiple problem instances.
 `x` is either:
 - A single `Vector`: the same x is used for every solver's data matrix. Length must equal the
 number of instances in the data of each solver.
-- A `Vector` of `AbstractVector`s: one x per solver, in the same order as `var_data`. `length(x)`
+- Multiple `Vector`s: one `Vector` per solver, in the same order as `var_data`. `length(x)`
 must equal the number of solvers, and length of each Vector must equal the number of instances in
 the data of each solver.
 
@@ -38,8 +38,8 @@ function plot_variable(x, var_data::Matrix...;
     end
 
     # Resolve x into a per-solver vector of x-axis values
-    if eltype(x) <: AbstractVector
-        # x is a vector of vectors, one per solver
+    if all(isa.(x, AbstractVector))
+        # x is multiple vectors, one per solver
         x_vecs = collect(x)
         @assert length(x_vecs) == n_solvers "Number of x vectors ($(length(x_vecs))) must equal number of data matrices ($n_solvers)"
         for (i, xi) in enumerate(x_vecs)
