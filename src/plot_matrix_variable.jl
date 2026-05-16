@@ -121,11 +121,13 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matri
     gl = fig[1, 1] = GridLayout(n_grid_rows, n_grid_cols)
 
     legend_handles = []
+    axes = Axis[]
 
     for k in 1:n_plot
         entry_label = isempty(var_name) ? "[$(I_plot[k]),$(J_plot[k])]" : "$(var_name)[$(I_plot[k]),$(J_plot[k])]"
         gr, gc = grid_pos(I_plot[k], J_plot[k])
-        ax = Axis(gl[gr, gc]; title=entry_label, xlabel=x_label, ylabel="Value")
+        ax = Axis(gl[gr, gc]; title=entry_label, xlabel=x_label)
+        push!(axes, ax)
 
         for (i, d) in enumerate(var_data)
             p = scatter!(ax, x_vecs[i], d[nz_idx[k], :]; color=solver_colors[i])
@@ -134,6 +136,9 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matri
             end
         end
     end
+
+    linkxaxes!(axes...)
+    linkyaxes!(axes...)
 
     Legend(fig[2, 1], legend_handles, solver_names;
            orientation=:horizontal, tellwidth=false)

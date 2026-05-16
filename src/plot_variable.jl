@@ -70,12 +70,14 @@ function plot_variable(x, var_data::Matrix...;
     fig = Figure(size=(320 * n_cols, 260 * n_rows + 60))
 
     legend_handles = []
+    axes = Axis[]
 
     for (k, data_idx) in enumerate(selected_indices)
         grid_row = div(k - 1, n_cols) + 1
         grid_col = mod(k - 1, n_cols) + 1
         entry_label = isempty(var_name) ? "[$data_idx]" : "$(var_name)[$data_idx]"
-        ax = Axis(fig[grid_row, grid_col]; title=entry_label, xlabel=x_label, ylabel="Value")
+        ax = Axis(fig[grid_row, grid_col]; title=entry_label, xlabel=x_label)
+        push!(axes, ax)
 
         for (i, d) in enumerate(var_data)
             p = scatter!(ax, x_vecs[i], d[data_idx, :]; color=solver_colors[i])
@@ -84,6 +86,9 @@ function plot_variable(x, var_data::Matrix...;
             end
         end
     end
+
+    linkxaxes!(axes...)
+    linkyaxes!(axes...)
 
     Legend(fig[n_rows + 1, 1:n_cols], legend_handles, solver_names;
            orientation=:horizontal, tellwidth=false)
