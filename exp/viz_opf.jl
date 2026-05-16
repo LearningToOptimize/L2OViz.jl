@@ -66,7 +66,7 @@ function viz_opf(
         variables isa Vector{String} || throw(ArgumentError("`variables` should be a Vector{String} when visualizing multiple variables (var_data are Dict)"))
         for (i, d) in enumerate(var_data)
             for v in variables
-                haskey(d, v) || throw(KeyError("Variable '$v' not found in data for solver $(i)"))
+                haskey(d, v) || throw(ArgumentError("Variable '$v' not found in data for solver $(i)"))
             end
         end
         var_data_pairs = [(v, [d[v] for d in var_data]) for v in variables]
