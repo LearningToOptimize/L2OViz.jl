@@ -39,3 +39,45 @@ In this case, different `x` should be provided.
 ### Thresholding
 When the dimension of the variable to visualize is too high, `vis_threshold` limits the number of entries that are visualized.
 `significance_fn` is used to select the most interesting entries of the variable.
+
+
+## Example: Optimal Power Flow
+`exp/viz_opf.jl` is a utility script for visualizing OPF solution data stored in HDF5 files, using system data from PGLib.jl and PowerModels.jl.
+
+**Arguments**
+
+| Flag | Description | Default |
+|---|---|---|
+| `--system` | PGLib system name (e.g. `pglib_opf_case14_ieee`) | *(required)* |
+| `--h5` | Path to the `.h5` solution file for each solver | *(required)* |
+| `--variables` | Variable names to visualize; one image is saved per variable | *(required)* |
+| `--solver-names` | Display name for each solver, matching the order of `--h5` | `Solver 1`, `Solver 2`, … |
+| `--output-dir` | Directory where output images are saved | `.` |
+| `--vis-threshold` | Max entries / rows+columns to show per variable | `20` |
+| `--flat` | Force `plot_variable` for all variables | off |
+
+**Variable dispatch**
+
+By default (without `--flat`), the script infers the plot type from the variable dimension:
+- Dimension equals the number of **branches** → `plot_matrix_variable`, with `I` and `J` taken from `f_bus` and `t_bus` of the network branches in sorted key order.
+- Dimension equals the number of **buses** → `plot_variable`.
+
+With `--flat`, all variables use `plot_variable` regardless of dimension, and the network is not loaded.
+
+**x-axis**
+
+Currently, the x-axis is `sum(pd .+ qd, dims=1)` (the total active and reactive load per problem instance).
+
+**Usage**
+```bash
+julia --project=exp exp/viz_opf.jl \
+    --system pglib_opf_case14_ieee \
+    --h5 solver_a.h5 solver_b.h5 \
+    --solver-names "Solver A" "Solver B" \
+    --variables pg vm \
+    --output-dir results/
+```
+
+Each `.h5` file must contain a dataset per variable, and `pd` and `qd` datasets.
+Output images are named `{system}_{variable}.png`.
+
