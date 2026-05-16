@@ -22,9 +22,9 @@ If not provided, solver names default to "Solver 1", "Solver 2", ...
 
 The x-axis label defaults to `"Unknown Parameter"` unless `xlabel` is given.
 
-**Thresholding**: if `length(unique(I)) > vis_threshold` or `length(unique(J)) > vis_threshold`,
-the top `vis_threshold` row-column pairs are selected. `significance_fn` (default: 1-norm) is
-applied to `vcat([d[k, :] for d in var_data]...)` to get the score of coordinate (I[k], J[k]).
+**Thresholding**: if number of unique rows/columns exceeds `vis_threshold`, only the top
+`vis_threshold` row-column pairs are selected. `significance_fn` (default: 1-norm) is applied
+to `vcat([d[k, :] for d in var_data]...)` to get the score of coordinate (I[k], J[k]).
 Score of each row/column index is the max entry score in that row/column.
 
 **Grid dimensions**: `n` fixes the side length of the (square) matrix; otherwise
@@ -76,17 +76,16 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matri
 
     # At each coordinate, combine values across all solvers and all instances for significance score
     entry_scores = [significance_fn(vcat([d[k, :] for d in var_data]...)) for k in 1:nnz]
-    I_plot, J_plot, nz_idx, sel_rows, sel_cols, filtered =
+    I_plot, J_plot, nz_idx, sel_indices, filtered =
         select_matrix_entries(entry_scores, I, J, vis_threshold)
 
     n_plot = length(I_plot)
 
     # Compressed grid when filtering; full n×n grid otherwise
     if filtered
-        row_map = Dict(r => idx for (idx, r) in enumerate(sel_rows))
-        col_map = Dict(c => idx for (idx, c) in enumerate(sel_cols))
-        n_grid_rows, n_grid_cols = length(sel_rows), length(sel_cols)
-        grid_pos = (i, j) -> (row_map[i], col_map[j])
+        index_map = Dict(c => idx for (idx, c) in enumerate(sel_indices))
+        n_grid_rows = n_grid_cols = length(sel_indices)
+        grid_pos = (i, j) -> (index_map[i], index_map[j])
     else
         n_grid_rows, n_grid_cols = effective_n_full, effective_n_full
         grid_pos = (i, j) -> (i, j)
