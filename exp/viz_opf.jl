@@ -41,14 +41,16 @@ Two calling modes, determined by `T`:
 `flat` (default `false`, bypasses network loading and always uses `plot_variable`).
 Output images are named `{system_name}_{variable}.png`.
 """
-function viz_opf(system_name::String,
-                 variables::Union{String, Vector{String}},
-                 x,
-                 var_data::T...;
-                 solver_names=nothing,
-                 output_dir::String=".",
-                 vis_threshold::Int=20,
-                 flat::Bool=false) where {T <: Union{Matrix, Dict}}
+function viz_opf(
+    system_name::String,
+    variables::Union{String, Vector{String}},
+    x,
+    var_data::T...;
+    solver_names=nothing,
+    output_dir::String=".",
+    vis_threshold::Int=20,
+    flat::Bool=false
+) where {T <: Union{Matrix, Dict}}
     if !flat
         I_branches, J_branches, n_branches, n_buses = _get_power_system_data(system_name)
     end
@@ -60,6 +62,11 @@ function viz_opf(system_name::String,
         var_data_pairs = [(variables, collect(var_data))]
     else
         # Multiple variables: extract each variable's matrices from the per-solver Dicts.
+        # Check that all solvers have all variables.
+        @assert variables isa Vector{String} "`variables` should be a Vector{String} when visualizing multiple variables (var_data are Dict)"
+        for (i, d) in enumerate(var_data)
+            @assert all(haskey(d, v) for v in variables) "Variable '$v' not found in data for solver $(i)"
+        end
         var_data_pairs = [(v, [d[v] for d in var_data]) for v in variables]
     end
 
