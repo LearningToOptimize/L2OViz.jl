@@ -22,10 +22,11 @@ If not provided, solver names default to "Solver 1", "Solver 2", ...
 
 The x-axis label defaults to `"Unknown Parameter"` unless `xlabel` is given.
 
-**Thresholding**: if number of unique rows/columns exceeds `vis_threshold`, only the top
-`vis_threshold` row-column pairs are selected. `significance_fn` (default: 1-norm) is applied
-to `vcat([d[k, :] for d in var_data]...)` to get the score of coordinate (I[k], J[k]).
-Score of each row/column index is the max entry score in that row/column.
+**Thresholding**: if number of unique rows/columns exceeds `vis_threshold`, select an induced
+submatrix with dimension `vis_threshold`. `significance_fn` (default: 1-norm) is applied
+to the values of the k-th entry of the variable across all solvers and instances to get the
+score of coordinate `(I[k], J[k])`, and the score of each column/row is the max entry score in
+that column/row.
 
 **Grid dimensions**: `n` fixes the side length of the (square) matrix; otherwise
 `max(maximum(I), maximum(J))` is used.

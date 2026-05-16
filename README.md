@@ -24,7 +24,7 @@ It is assumed that, across all the problem instances, the same matrix variable h
 The values are still stored as a `Matrix` with `n_instances` columns, where each column contains the nonzero values of the matrix variable in each problem instance.
 In other words, all the variables are treated as vector variables in L2OViz.jl.
 
-Additionally, it is assumed the COO coordinates contain only one of each symmetry pair (i.e. a half representation; entries are visualized only at the given coordinates).
+Additionally, it is assumed that the COO coordinates contain only one of each symmetry pair (i.e. a half representation; entries are visualized only at the given coordinates).
 
 `plot_matrix_variable` accepts a variable number of `Matrix` inputs, each corresponding to a solver.
 

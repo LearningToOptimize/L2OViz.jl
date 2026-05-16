@@ -20,9 +20,8 @@ end
 Determine which entries of a symmetric matrix to display, with optional thresholding.
 
 The matrix is assumed symmetric and the COO coordinates should not contain repeated symmetry
-pairs. At most `vis_threshold` indices (shared between rows and columns) are selected, since
-row and column significance are the same. Because the COO is a half representation, the set
-of indices appearing on either axis of the full symmetric matrix is `union(unique(I), unique(J))`.
+pairs. If number of unique rows/columns exceeds `vis_threshold`, select an induced
+submatrix with dimension `vis_threshold`.
 """
 function select_matrix_entries(entry_scores::Vector{<:Real},
                                 I::Vector{Int}, J::Vector{Int},
@@ -38,12 +37,14 @@ function select_matrix_entries(entry_scores::Vector{<:Real},
         return I, J, collect(1:length(I)), unique_indices, false
 
     # Score each index by the maximum of the scores of its entries. Since we assume I and J
-    # do not contain both (i, j) and (j, i), we need to consider the columns of both T and T'
+    # do not contain both (i, j) and (j, i), we need to aggregate the scores over both rows
+    # and columns of the input matrix T, to effectively aggregate over columns of the full
+    # symmetric matrix.
     col_scores = Dict{Int, Float64}()
     for k in 1:length(I)
         s = entry_scores[k]
-        col_scores[J[k]] = max(get(col_scores, J[k], 0.0), s)  # max over the columns of T
-        col_scores[I[k]] = max(get(col_scores, I[k], 0.0), s)  # max over the columns of T'
+        col_scores[I[k]] = max(get(col_scores, I[k], -Inf), s)  # max over the rows of T
+        col_scores[J[k]] = max(get(col_scores, J[k], -Inf), s)  # max over the columns of T
     end
     # sort indices by score
     sorted_indices = sort(unique_indices, by=c -> col_scores[c], rev=true)
