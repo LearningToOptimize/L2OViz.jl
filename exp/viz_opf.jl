@@ -38,7 +38,8 @@ Two calling modes, determined by `T`:
 - Dimension equals the number of **buses** → `plot_variable`.
 
 **Keyword arguments**: `solver_names`, `output_dir` (default `"."`), `vis_threshold` (default `20`),
-`flat` (default `false`, bypasses network loading and always uses `plot_variable`).
+`flat` (default `false`, bypasses network loading and always uses `plot_variable`),
+`xlabel` (forwarded to the underlying plotting functions; defaults to their default).
 Output images are named `{system_name}_{variable}.png`.
 """
 function viz_opf(
@@ -49,7 +50,8 @@ function viz_opf(
     solver_names=nothing,
     output_dir::String=".",
     vis_threshold::Int=20,
-    flat::Bool=false
+    flat::Bool=false,
+    xlabel=nothing
 ) where {T <: Union{Matrix, Dict}}
     if !flat
         I_branches, J_branches, n_branches, n_buses = _get_power_system_data(system_name)
@@ -80,18 +82,21 @@ function viz_opf(
             fig = plot_variable(x, solvers_data...;
                                 solver_names=solver_names,
                                 var_name=var_name,
-                                vis_threshold=vis_threshold)
+                                vis_threshold=vis_threshold,
+                                xlabel=xlabel)
         elseif n_dim == n_branches
             fig = plot_matrix_variable(I_branches, J_branches, x, solvers_data...;
                                        solver_names=solver_names,
                                        var_name=var_name,
-                                       vis_threshold=vis_threshold)
+                                       vis_threshold=vis_threshold,
+                                       xlabel=xlabel)
         else
             n_dim == n_buses || throw(ArgumentError("Variable '$var_name' has dimension $n_dim, expected $n_branches (branches) or $n_buses (buses)"))
             fig = plot_variable(x, solvers_data...;
                                 solver_names=solver_names,
                                 var_name=var_name,
-                                vis_threshold=vis_threshold)
+                                vis_threshold=vis_threshold,
+                                xlabel=xlabel)
         end
 
         output_path = joinpath(output_dir, "$(system_name)_$(var_name).png")
