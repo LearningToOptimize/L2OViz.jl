@@ -99,6 +99,15 @@ function viz_opf(
                                 xlabel=xlabel)
         end
 
+        # Add a figure-level title above the subplot grid. Row 0 places the
+        # label above row 1 (where the subplots/inner layout start). We set
+        # `tellwidth=false` so the label's natural text width does not feed
+        # back into column sizing — important for `plot_matrix_variable`,
+        # whose contents live inside a nested GridLayout at `fig[1, 1]`.
+        Label(fig[0, :], "$(system_name): $(var_name)";
+              fontsize=20, font=:bold, halign=:center,
+              tellwidth=false, tellheight=true)
+
         output_path = joinpath(output_dir, "$(system_name)_$(var_name).png")
         save(output_path, fig)
         println("Saved $output_path")
