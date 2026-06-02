@@ -5,8 +5,8 @@
                          vis_threshold::Int=20, significance_fn=default_significance) -> Figure
 
 Visualize a symmetric matrix variable (given in COO format) across multiple problem instances.
-The matrix variable is assumed to have the same COO across all the problem instances, and to be
-symmetric: the COO coordinates should not contain repeated symmetry pairs, and entries are
+The matrix variable is assumed to have the same COO across all the problem instances.
+The COO coordinates specified by `I` and `J` should not contain both (i, j) and (j, i), and entries are
 visualized for only the given half of the matrix specified by the coordinates.
 
 `x` is either:
@@ -26,7 +26,8 @@ The x-axis label defaults to `"Unknown Parameter"` unless `xlabel` is given.
 submatrix with dimension `vis_threshold`. `significance_fn` (default: 1-norm) is applied
 to the values of the k-th entry of the variable across all solvers and instances to get the
 score of coordinate `(I[k], J[k])`, and the score of each column/row is the max entry score in
-that column/row.
+that column/row. If there are repeated `(i, j)` coordinates, only the highest-scoring one is
+kept after thresholding (with a warning).
 
 **Grid dimensions**: `n` fixes the side length of the (square) matrix; otherwise
 `max(maximum(I), maximum(J))` is used.
@@ -53,11 +54,11 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matri
 
     # For each entry, combine values across all solvers and all instances for significance score
     entry_scores = compute_entry_scores(var_data, nnz, significance_fn)
-    I_plot, J_plot, nz_idx, sel_indices, filtered =
+    I_plot, J_plot, selected_indices, filtered =
         select_matrix_entries(entry_scores, I, J, vis_threshold)
 
     n_grid_rows, n_grid_cols, grid_pos =
-        matrix_grid_layout(sel_indices, filtered, effective_n_full)
+        matrix_grid_layout(I_plot, J_plot, filtered, effective_n_full)
 
     solver_colors = solver_palette(n_solvers)
 
@@ -66,7 +67,7 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matri
 
     axes, legend_handles = draw_matrix_panels!(
         gl, var_data, x_vecs, x_label, var_name,
-        I_plot, J_plot, nz_idx, grid_pos, solver_colors)
+        I_plot, J_plot, selected_indices, grid_pos, solver_colors)
 
     linkxaxes!(axes...)
     linkyaxes!(axes...)

@@ -26,11 +26,14 @@ It is assumed that, across all the problem instances, the same matrix variable h
 The values are still stored as a `Matrix` with `n_instances` columns, where each column contains the nonzero values of the matrix variable in each problem instance.
 In other words, all the variables are treated as vector variables in L2OViz.jl.
 
-Additionally, it is assumed that the COO coordinates contain only one of each symmetry pair (i.e. a half representation; entries are visualized only at the given coordinates).
+In some cases the underlying graph is multi-edge.
+If there are repeated `(i, j)` coordinates, only the highest-scoring one is kept (see [Thresholding](#thresholding)).
 
 `plot_matrix_variable` accepts a variable number of `Matrix` inputs, each corresponding to a solver.
 
 *Note: if the coordinate-based layout is not needed, you can also visualize the non-zero entries with `plot_variable` in a plain layout.*
+
+Currently, asymmetric matrix (directed graph) variables are not supported.
 
 ## Visualization
 The values of each variable entry across all the problem instances are visualized in a scatter point subplot.
@@ -49,6 +52,11 @@ The animation can be exported as a GIF.
 ### Thresholding
 When the dimension of the variable to visualize is too high, `vis_threshold` limits the number of entries that are visualized.
 `significance_fn` is used to select the most interesting entries of the variable.
+
+For symmetric matrix variables, the `vis_threshold` columns (in the original full matrix) with the highest max scores are selected.
+Since the matrix is symmetric, doing so effectively selects a `vis_threshold`-by-`vis_threshold` principal submatrix.
+
+If there are repeated `(i, j)` coordinates, only the highest-scoring one is kept after thresholding (a warning is emitted).
 
 By default, `significance_fn` chooses the solutions with the maximum absolute sum across all instances of all solvers.
 This can be used to, for example, visualize the variables where a solver produces highest error compared to a reference (by calling **the plotting functions on the error** instead of the solutions).

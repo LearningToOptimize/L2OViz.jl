@@ -9,12 +9,12 @@
                             time_label="t")
         -> (fig::Figure, frame_obs::Observable{Int})
 
-Build an animatable figure for a symmetric matrix variable (given in COO format) across a
+Build an animation for a symmetric matrix variable (given in COO format) across a
 sequence of time-stepped frames. Each frame mirrors the layout of [`plot_matrix_variable`](@ref):
 one subplot per displayed `(I[k], J[k])` entry, arranged on the matrix grid.
 
-`I`, `J` give the COO coordinates of the (symmetric, half-stored) matrix; they are shared
-across all frames and solvers.
+`I`, `J` give the half-representation COO coordinates of the symmetric matrix; they are
+shared across all frames and solvers.
 
 `x` follows the same convention as [`plot_matrix_variable`](@ref):
 - A single `Vector`: shared x-axis values for every solver's data.
@@ -34,8 +34,9 @@ static reference solution. All arrays must agree on `nnz`, and any 3D array must
 Thresholding (`vis_threshold`, `significance_fn`) follows the same induced-submatrix rule as
 `plot_matrix_variable`, with significance scores aggregated over all instances AND all frames
 so that the set of displayed entries — and therefore the grid layout — stays stable for the
-whole animation. `n` fixes the side length of the (square) matrix; otherwise inferred from
-`max(maximum(I), maximum(J))`.
+whole animation. If there are repeated `(i, j)` coordinates, only the highest-scoring one is
+kept after thresholding (with a warning). `n` fixes the side length of the (square) matrix;
+otherwise inferred from `max(maximum(I), maximum(J))`.
 
 The y-axis range is held fixed for every frame. By default the limits are computed once from
 the full min/max of the displayed data across all selected entries, solvers, instances and
@@ -83,11 +84,11 @@ function animate_matrix_variable(I::Vector{Int}, J::Vector{Int}, x,
 
     # For each entry, combine values across all solvers, instances and frames for significance score
     entry_scores = compute_entry_scores(var_data, nnz, significance_fn)
-    I_plot, J_plot, nz_idx, sel_indices, filtered =
+    I_plot, J_plot, selected_indices, filtered =
         select_matrix_entries(entry_scores, I, J, vis_threshold)
 
     n_grid_rows, n_grid_cols, grid_pos =
-        matrix_grid_layout(sel_indices, filtered, effective_n_full)
+        matrix_grid_layout(I_plot, J_plot, filtered, effective_n_full)
 
     solver_colors = solver_palette(n_solvers)
 
@@ -107,14 +108,14 @@ function animate_matrix_variable(I::Vector{Int}, J::Vector{Int}, x,
 
     axes, legend_handles = draw_matrix_panels!(
         gl, var_data, x_vecs, x_label, var_name,
-        I_plot, J_plot, nz_idx, grid_pos, solver_colors; frame_obs=frame_obs)
+        I_plot, J_plot, selected_indices, grid_pos, solver_colors; frame_obs=frame_obs)
 
     linkxaxes!(axes...)
     linkyaxes!(axes...)
 
     # Fix a single global y-range for the entire animation. Because the y-axes are linked,
     # setting limits on one axis propagates to all panels.
-    apply_fixed_ylims!(axes[1], ylims, var_data, nz_idx)
+    apply_fixed_ylims!(axes[1], ylims, var_data, selected_indices)
 
     Legend(fig[2, 1], legend_handles, solver_names;
            orientation=:horizontal, tellwidth=false)

@@ -133,13 +133,15 @@ function vector_grid_layout(n_plot::Int)
     return n_rows, n_cols
 end
 
-# Matrix layout: when entries were filtered, compress to a length(sel_indices) ×
-# length(sel_indices) submatrix; otherwise keep the full effective_n_full × effective_n_full
-# grid. `grid_pos(i, j)` maps original (i, j) → grid cell.
-function matrix_grid_layout(sel_indices, filtered::Bool, effective_n_full::Int)
+# Matrix layout: when entries have been filtered, extract a principal submatrix from
+# (`I_plot`, `J_plot`); otherwise
+# keep the full effective_n_full × effective_n_full grid. `grid_pos(i, j)` maps original
+# (i, j) → grid cell.
+function matrix_grid_layout(I_plot, J_plot, filtered::Bool, effective_n_full::Int)
     if filtered
-        index_map = Dict(c => idx for (idx, c) in enumerate(sel_indices))
-        n = length(sel_indices)
+        principal_submat_indices = sort(union(unique(I_plot), unique(J_plot)))
+        index_map = Dict(c => idx for (idx, c) in enumerate(principal_submat_indices))
+        n = length(principal_submat_indices)
         return n, n, (i, j) -> (index_map[i], index_map[j])
     else
         return effective_n_full, effective_n_full, (i, j) -> (i, j)
@@ -170,10 +172,10 @@ function draw_vector_panels!(parent, var_data, x_vecs, x_label, var_name,
 end
 
 # Same as `draw_vector_panels!`, but for a COO-symmetric matrix variable. `grid_pos` maps
-# the original (I, J) coordinates to (row, col) cells of `gl` (a GridLayout). `nz_idx`
+# the original (I, J) coordinates to (row, col) cells of `gl` (a GridLayout). `selected_indices`
 # maps the k-th plotted entry back to its row in each solver's data array.
 function draw_matrix_panels!(gl, var_data, x_vecs, x_label, var_name,
-                             I_plot, J_plot, nz_idx, grid_pos,
+                             I_plot, J_plot, selected_indices, grid_pos,
                              solver_colors; frame_obs=nothing)
     legend_handles = []
     axes = Axis[]
@@ -182,7 +184,7 @@ function draw_matrix_panels!(gl, var_data, x_vecs, x_label, var_name,
         ax = Axis(gl[gr, gc];
                   title=entry_label(var_name, I_plot[k], J_plot[k]), xlabel=x_label)
         push!(axes, ax)
-        coo_row = nz_idx[k]
+        coo_row = selected_indices[k]
         for (i, d) in enumerate(var_data)
             p = scatter!(ax, x_vecs[i], plot_y(d, coo_row, frame_obs);
                          color=solver_colors[i])
