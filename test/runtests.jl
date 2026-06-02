@@ -114,7 +114,7 @@ end  # select_matrix_entries
 
 @testset "dedup_repeated_entries" begin
 
-    @testset "passes entries through unchanged when there are no duplicates" begin
+    @testset "no changes when there are no duplicates" begin
         I_plot = [1, 2, 3]
         J_plot = [2, 3, 4]
         selected_indices = [1, 2, 3]
@@ -142,17 +142,16 @@ end  # select_matrix_entries
         @test idx_out == [3]
     end
 
-    @testset "selected_indices indexes scores rather than the plotted position" begin
-        # selected_indices maps the k-th plotted entry to its original COO row, so the
-        # tie-break must read scores[selected_indices[k]]. Here the first plotted (1, 2) maps
-        # to score row 4 (8.0) and the second to row 2 (3.0), so the first occurrence wins.
+    @testset "indexes the set of all edges" begin
+        # The first plotted (1, 2) maps to score row 4 (8.0) and the second to row 2 (3.0), so
+        # the first occurrence survives.
         I_plot = [1, 1]
         J_plot = [2, 2]
         selected_indices = [4, 2]
         scores = [0.0, 3.0, 0.0, 8.0]
         I_out, J_out, idx_out =
             suppress_warnings() do
-                dedup_repeated_entries(I_plot, J_plot, selected_indices, scores)
+                dedup_repeated_entries(I_plot, J_plot, selected_indices, scores[selected_indices])
             end
         @test I_out == [1]
         @test J_out == [2]

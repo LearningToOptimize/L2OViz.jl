@@ -17,13 +17,8 @@ end
     dedup_repeated_entries(I_plot, J_plot, selected_indices, entry_scores)
         -> (I_plot, J_plot, selected_indices)
 
-Collapse plotted entries that share the exact same `(i, j)` coordinate, keeping only the
-occurrence with the highest `entry_scores` value and emitting a warning for each colliding
-coordinate. This handles variables whose COO is a multi-edge graph rather than a true matrix.
-
-`selected_indices[k]` is the original COO row of the `k`-th plotted entry, so the tie-break
-compares `entry_scores[selected_indices[k]]`. The surviving entries' original rows are returned
-in the (filtered) `selected_indices`.
+Collapse repeated vertex pair `(i, j)` in `I_plot`, `J_plot`, keeping only the occurrence
+with the highest `entry_scores` value and emitting a warning for each colliding coordinate.
 """
 function dedup_repeated_entries(I_plot::Vector{Int}, J_plot::Vector{Int},
                                 selected_indices::Vector{Int}, entry_scores::Vector{<:Real})
@@ -40,7 +35,7 @@ function dedup_repeated_entries(I_plot::Vector{Int}, J_plot::Vector{Int},
         else
             push!(duplicate_pairs, pair)
             # keep the higher-scoring occurrence
-            if entry_scores[selected_indices[k]] > entry_scores[selected_indices[previous_position]]
+            if entry_scores[k] > entry_scores[previous_position]
                 best_idx_for_pair[pair] = k
             end
         end
@@ -116,7 +111,7 @@ function select_matrix_entries(entry_scores::Vector{<:Real},
     # Collapse any duplicate (i, j) coordinates among the selected entries.
     I_plot, J_plot, selected_indices = dedup_repeated_entries(
         I[selected_indices], J[selected_indices],
-        selected_indices, entry_scores
+        selected_indices, entry_scores[selected_indices]
     )
     return I_plot, J_plot, selected_indices
 end
