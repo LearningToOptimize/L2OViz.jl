@@ -1,5 +1,5 @@
 """
-    animate_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, time_steps,
+    animate_graph_variable(I::Vector{Int}, J::Vector{Int}, x, time_steps,
                             var_data::Union{AbstractMatrix, AbstractArray{<:Any,3}}...;
                             solver_names=nothing,
                             xlabel=nothing, var_name="",
@@ -9,14 +9,13 @@
                             time_label="t")
         -> (fig::Figure, frame_obs::Observable{Int})
 
-Build an animation for a symmetric matrix variable (given in COO format) across a
-sequence of time-stepped frames. Each frame mirrors the layout of [`plot_matrix_variable`](@ref):
-one subplot per displayed `(I[k], J[k])` entry, arranged on the matrix grid.
+Build an animation for a graph variable across a sequence of time-stepped frames.
+Each frame contains the layout of [`plot_graph_variable`](@ref): one subplot per
+displayed `(I[k], J[k])` entry, arranged on the matrix grid.
 
-`I`, `J` give the half-representation COO coordinates of the symmetric matrix; they are
-shared across all frames and solvers.
+`I`, `J` give the endpoints of the graph edges; they are shared across all frames and solvers.
 
-`x` follows the same convention as [`plot_matrix_variable`](@ref):
+`x` follows the same convention as [`plot_graph_variable`](@ref):
 - A single `Vector`: shared x-axis values for every solver's data.
 - A `Vector` of `Vector`s: one per solver, in the same order as `var_data`.
 
@@ -31,8 +30,8 @@ static reference solution. All arrays must agree on `n_e`, and any 3D array must
 `size(d, 3) == length(time_steps)`. `n_instances` may differ across solvers when a per-solver
 `x` is supplied.
 
-Thresholding (`vis_threshold`, `significance_fn`) follows the same induced-submatrix rule as
-`plot_matrix_variable`, with significance scores aggregated over all instances AND all frames
+Thresholding (`vis_threshold`, `significance_fn`) follows the same induced-subgraph rule as
+`plot_graph_variable`, with significance scores aggregated over all instances AND all frames
 so that the set of displayed entries — and therefore the grid layout — stays stable for the
 whole animation. If multiple edges between `(i, j)` are selected, only the highest-scoring one is
 kept.
@@ -45,13 +44,13 @@ The returned `frame_obs::Observable{Int}` controls which frame is currently disp
 export a GIF, drive it via Makie's `record`:
 
 ```julia
-fig, frame_obs = animate_matrix_variable(I, J, x, time_steps, data_A, data_B; ...)
+fig, frame_obs = animate_graph_variable(I, J, x, time_steps, data_A, data_B; ...)
 record(fig, "anim.gif", 1:length(time_steps); framerate=10) do f
     frame_obs[] = f
 end
 ```
 """
-function animate_matrix_variable(I::Vector{Int}, J::Vector{Int}, x,
+function animate_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
                                  time_steps::AbstractVector,
                                  var_data::Union{AbstractMatrix, AbstractArray{<:Any,3}}...;
                                  solver_names=nothing,
@@ -77,7 +76,7 @@ function animate_matrix_variable(I::Vector{Int}, J::Vector{Int}, x,
 
     # For each entry, combine values across all solvers, instances and frames for significance score
     entry_scores = compute_entry_scores(var_data, n_e, significance_fn)
-    I_plot, J_plot, selected_indices = select_matrix_entries(entry_scores, I, J, vis_threshold)
+    I_plot, J_plot, selected_indices = select_variable_edges(entry_scores, I, J, vis_threshold)
 
     n, grid_pos = matrix_grid_layout(I_plot, J_plot)
 

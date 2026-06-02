@@ -30,7 +30,7 @@ That is, all the variables are treated as vector variables in L2OViz.jl.
 In some cases the underlying graph is multi-edge.
 If there are multiple edges between a vertex pair, only the highest-scoring one is kept (see [Thresholding](#thresholding)).
 
-`plot_matrix_variable` accepts a variable number of `Matrix` inputs, each corresponding to a solver.
+`plot_graph_variable` accepts a variable number of `Matrix` inputs, each corresponding to a solver.
 
 Currently, directed graph variables are not supported.
 
@@ -39,13 +39,13 @@ Currently, directed graph variables are not supported.
 ## Visualization
 The values of each variable entry across all the problem instances are visualized in a scatter point subplot.
 `plot_variable` simply places the subplots side-by-side.
-`plot_matrix_variable` arranges the subplots into a grid layout, where the subplot at coordinate `(i, j)` visualizes the `(i, j)` entry of the variable as specified in `(I, J)`.
+`plot_graph_variable` arranges the subplots into a grid layout, where the subplot at coordinate `(i, j)` visualizes the `(i, j)` entry of the variable as specified in `(I, J)`.
 
 The data of Solver A and Solver B do not have to be for the same problem instances.
 In this case, different `x` should be provided.
 
 ### Animation
-`animate_variable` and `animate_matrix_variable` are animated counterparts to `plot_variable` and `plot_matrix_variable`.
+`animate_variable` and `animate_graph_variable` are animated counterparts to `plot_variable` and `plot_graph_variable`.
 Each frame uses the same subplot layout as its non-animated counterpart.
 The animation can be exported as a GIF.
 
@@ -68,16 +68,16 @@ This can be used to, for example, visualize the variables where a solver produce
 
 `viz_opf` supports two calling modes:
 
-- **Single variable** (`variables::String`, `var_data::Matrix...`): each `var_data` argument is
-  one solver's `(n_dim × n_instances)` matrix for the named variable.
+- **Single variable** (`variables::String`, `var_data::Matrix...`): each `var_data` argument is a
+  (n_dim × n_instances) `Matrix` of the named variable of a solver.
 - **Multiple variables** (`variables::Vector{String}`, `var_data::Dict...`): each `var_data`
   argument is a `Dict` mapping variable names to matrices, one per solver. Multiple images will
   be saved.
 
-`animate_opf` supports two similar calling modes (single- and multiple-variable). Refer to `animate_variable` and `animate_matrix_variable` for the corresponding data formats.
+`animate_opf` supports two similar calling modes (single- and multiple-variable). Refer to `animate_variable` and `animate_graph_variable` for the corresponding data formats.
 
 By default (`flat=false`), the plot type is inferred from each variable's dimension:
-- Equal to the number of **branches** → `plot_matrix_variable`/`animate_matrix_variable`, with COO indices from `f_bus`/`t_bus` in sorted branch key order obtained from `make_basic_network(pglib(system_name))`.
+- Equal to the number of **branches** → `plot_graph_variable`/`animate_graph_variable`, with `I`/`J` being `f_bus`/`t_bus` **in sorted branch key order** obtained from `make_basic_network(pglib(system_name))`.
 - Equal to the number of **buses** → `plot_variable`/`animate_variable`.
 
 When `flat=true`, all variables use `plot_variable`/`animate_variable`.

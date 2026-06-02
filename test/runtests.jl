@@ -37,14 +37,14 @@ suppress_warnings(f) = with_logger(f, NullLogger())
 
 end  # select_variable_entries
 
-@testset "select_matrix_entries" begin
+@testset "select_variable_edges" begin
 
     @testset "no filtering when the number of unique indices is within threshold" begin
         # union(unique(I), unique(J)) = {1, 2, 3} of size 3 ≤ vis_threshold = 3
         I = [1, 1]
         J = [2, 3]
         scores = [5.0, 3.0]
-        I_plot, J_plot, selected_indices = select_matrix_entries(scores, I, J, 3)
+        I_plot, J_plot, selected_indices = select_variable_edges(scores, I, J, 3)
         # All entries are displayed; selected_indices points into the original I/J.
         @test selected_indices == [1, 2]
         @test I_plot == I[selected_indices] == I
@@ -57,7 +57,7 @@ end  # select_variable_entries
         I = [1, 1]
         J = [2, 3]
         scores = [1.0, 5.0]
-        I_plot, J_plot, selected_indices = select_matrix_entries(scores, I, J, 2)
+        I_plot, J_plot, selected_indices = select_variable_edges(scores, I, J, 2)
         # Entry (1, 3) scores highest, so rows/columns {1, 3} are selected and only entry
         # k = 2 survives.
         @test selected_indices == [2]
@@ -70,7 +70,7 @@ end  # select_variable_entries
         I = [1, 2, 3]
         J = [4, 4, 4]
         scores = [10.0, 5.0, 3.0]
-        I_plot, J_plot, selected_indices = select_matrix_entries(scores, I, J, 2)
+        I_plot, J_plot, selected_indices = select_variable_edges(scores, I, J, 2)
         # Only entry k = 1 has both endpoints in {1, 4}; (2, 4) and (3, 4) are dropped.
         @test selected_indices == [1]
         @test I_plot == [1]
@@ -86,7 +86,7 @@ end  # select_variable_entries
         scores = [3.0, 7.0, 1.0]
         I_plot, J_plot, selected_indices =
             suppress_warnings() do
-                select_matrix_entries(scores, I, J, 5)
+                select_variable_edges(scores, I, J, 5)
             end
         # (1, 2) kept via its higher-scoring row k = 2, plus the unique (2, 3) at k = 3.
         @test selected_indices == [2, 3]
@@ -103,16 +103,16 @@ end  # select_variable_entries
         scores = [3.0, 9.0, 1.0]
         I_plot, J_plot, selected_indices =
             suppress_warnings() do
-                select_matrix_entries(scores, I, J, 2)
+                select_variable_edges(scores, I, J, 2)
             end
         @test selected_indices == [2]
         @test I_plot == [1]
         @test J_plot == [2]
     end
 
-end  # select_matrix_entries
+end  # select_variable_edges
 
-@testset "dedup_repeated_entries" begin
+@testset "dedup_edges_by_scores" begin
 
     @testset "no changes when there are no duplicates" begin
         I_plot = [1, 2, 3]
@@ -120,7 +120,7 @@ end  # select_matrix_entries
         selected_indices = [1, 2, 3]
         scores = [5.0, 6.0, 7.0]
         I_out, J_out, idx_out =
-            dedup_repeated_entries(I_plot, J_plot, selected_indices, scores)
+            dedup_edges_by_scores(I_plot, J_plot, selected_indices, scores)
         @test I_out == I_plot
         @test J_out == J_plot
         @test idx_out == selected_indices
@@ -135,7 +135,7 @@ end  # select_matrix_entries
         scores = [5.0, 2.0, 9.0]
         I_out, J_out, idx_out =
             suppress_warnings() do
-                dedup_repeated_entries(I_plot, J_plot, selected_indices, scores)
+                dedup_edges_by_scores(I_plot, J_plot, selected_indices, scores)
             end
         @test I_out == [1]
         @test J_out == [2]
@@ -151,11 +151,11 @@ end  # select_matrix_entries
         scores = [0.0, 3.0, 0.0, 8.0]
         I_out, J_out, idx_out =
             suppress_warnings() do
-                dedup_repeated_entries(I_plot, J_plot, selected_indices, scores[selected_indices])
+                dedup_edges_by_scores(I_plot, J_plot, selected_indices, scores[selected_indices])
             end
         @test I_out == [1]
         @test J_out == [2]
         @test idx_out == [4]
     end
 
-end  # dedup_repeated_entries
+end  # dedup_edges_by_scores

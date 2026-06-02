@@ -14,13 +14,13 @@ function select_variable_entries(scores::Vector{<:Real}, vis_threshold::Int)
 end
 
 """
-    dedup_repeated_entries(I_plot, J_plot, selected_indices, entry_scores)
+    dedup_edges_by_scores(I_plot, J_plot, selected_indices, entry_scores)
         -> (I_plot, J_plot, selected_indices)
 
 Collapse repeated vertex pair `(i, j)` in `I_plot`, `J_plot`, keeping only the occurrence
 with the highest `entry_scores` value and emitting a warning for each colliding coordinate.
 """
-function dedup_repeated_entries(I_plot::Vector{Int}, J_plot::Vector{Int},
+function dedup_edges_by_scores(I_plot::Vector{Int}, J_plot::Vector{Int},
                                 selected_indices::Vector{Int}, entry_scores::Vector{<:Real})
     # For each ordered coordinate pair, remember the index of its highest-scoring occurrence so far
     best_idx_for_pair = Dict{Tuple{Int, Int}, Int}()
@@ -53,14 +53,14 @@ function dedup_repeated_entries(I_plot::Vector{Int}, J_plot::Vector{Int},
 end
 
 """
-    select_matrix_entries(entry_scores, I, J, vis_threshold)
+    select_variable_edges(entry_scores, I, J, vis_threshold)
         -> (I_plot, J_plot, selected_indices)
 
 Determine which entries of a symmetric matrix to display, with optional thresholding.
 
-The matrix is assumed symmetric and the COO coordinates should not contain both `(i, j)` and
-`(j, i)`. If number of unique rows/columns exceeds `vis_threshold`, select a principal submatrix
-on the `vis_threshold` highest-scoring rows/columns.
+`I`, `J` should not contain both `(i, j)` and `(j, i)`. If number of unique rows/columns
+exceeds `vis_threshold`, select an induced subgraph on the `vis_threshold` highest-scoring
+vertices.
 
 Returns the coordinates `I_plot`, `J_plot` of the entries to display, together with
 `selected_indices`, their positions in the original `I`/`J` (so `I_plot == I[selected_indices]`
@@ -71,23 +71,22 @@ needed downstream: `(I_plot[k], J_plot[k])` places panel `k` on the grid, while
 If the entries selected for display contain repeated exact `(i, j)` coordinates (which can
 happen when the variable encodes a multi-edge graph), only the highest-scoring occurrence of
 each coordinate is kept and a warning is emitted per colliding coordinate (see
-`dedup_repeated_entries`).
+`dedup_edges_by_scores`).
 """
-function select_matrix_entries(entry_scores::Vector{<:Real},
+function select_variable_edges(entry_scores::Vector{<:Real},
                                 I::Vector{Int}, J::Vector{Int},
                                 vis_threshold::Int)
     vis_threshold > 0 || throw(ArgumentError("vis_threshold must be positive"))
     all(I .>= 1) || throw(ArgumentError("All I indices must be >= 1"))
     all(J .>= 1) || throw(ArgumentError("All J indices must be >= 1"))
 
-    # Since the COO is a half representation, both row and column index sets of the full
-    # symmetric matrix are union(unique(I), unique(J)).
+    # Set of vertices with at least one edge
     V = union(unique(I), unique(J))
 
     if length(V) <= vis_threshold
         # No need to filter. Collapse any repeated edges.
         I_plot, J_plot, selected_indices =
-            dedup_repeated_entries(I, J, collect(1:length(I)), entry_scores)
+            dedup_edges_by_scores(I, J, collect(1:length(I)), entry_scores)
         return I_plot, J_plot, selected_indices
     end
 
@@ -109,7 +108,7 @@ function select_matrix_entries(entry_scores::Vector{<:Real},
     )
     isempty(selected_indices) && throw(ArgumentError("No entries selected for display; consider increasing vis_threshold"))
     # Collapse any duplicate (i, j) coordinates among the selected entries.
-    I_plot, J_plot, selected_indices = dedup_repeated_entries(
+    I_plot, J_plot, selected_indices = dedup_edges_by_scores(
         I[selected_indices], J[selected_indices],
         selected_indices, entry_scores[selected_indices]
     )

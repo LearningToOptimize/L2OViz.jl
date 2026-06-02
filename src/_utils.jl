@@ -119,7 +119,7 @@ function apply_fixed_ylims!(ax, ylims_user, var_data, entry_indices)
     end
 end
 
-# Panel titles. Vector variant produces "[k]" or "var_name[k]"; matrix variant produces
+# Panel titles. Vector variant produces "[k]" or "var_name[k]"; graph variant produces
 # "[i,j]" or "var_name[i,j]".
 entry_label(var_name::AbstractString, idx::Int) =
     isempty(var_name) ? "[$idx]" : "$(var_name)[$idx]"
@@ -165,9 +165,9 @@ function draw_vector_panels!(parent, var_data, x_vecs, x_label, var_name,
     return axes, legend_handles
 end
 
-# Same as `draw_vector_panels!`, but for a COO-symmetric matrix variable. `grid_pos` maps
-# the original (I, J) coordinates to (row, col) cells of `gl` (a GridLayout). `selected_indices`
-# maps the k-th plotted entry back to its row in each solver's data array.
+# Same as `draw_vector_panels!`, but for a graph variable. `grid_pos` maps the original (I, J)
+# to (row, col) cells of `gl` (a GridLayout). `selected_indices` maps the k-th plotted entry
+# back to its row in each solver's data array.
 function draw_matrix_panels!(gl, var_data, x_vecs, x_label, var_name,
                              I_plot, J_plot, selected_indices, grid_pos,
                              solver_colors; frame_obs=nothing)

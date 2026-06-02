@@ -9,6 +9,6 @@ include("plot_matrix_variable.jl")
 include("animate_variable.jl")
 include("animate_matrix_variable.jl")
 
-export plot_variable, plot_matrix_variable, animate_variable, animate_matrix_variable
+export plot_variable, plot_graph_variable, animate_variable, animate_graph_variable
 
 end
