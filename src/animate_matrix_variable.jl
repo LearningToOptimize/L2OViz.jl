@@ -23,20 +23,19 @@ shared across all frames and solvers.
 `time_steps` is a `Vector` of length `n_frames` giving the value displayed for each frame.
 
 `var_data` is one or more arrays, one per solver. Each array may be either:
-- A 3D `(nnz × n_instances × n_frames)` array, giving the variable's values at each frame.
-- A 2D `(nnz × n_instances)` matrix, displayed as constant across every frame.
+- A 3D `(n_e × n_instances × n_frames)` array, giving the variable's values at each frame.
+- A 2D `(n_e × n_instances)` matrix, displayed as constant across every frame.
 
 Different solvers can mix the two shapes — useful for comparing an animated solver against a
-static reference solution. All arrays must agree on `nnz`, and any 3D array must have
+static reference solution. All arrays must agree on `n_e`, and any 3D array must have
 `size(d, 3) == length(time_steps)`. `n_instances` may differ across solvers when a per-solver
 `x` is supplied.
 
 Thresholding (`vis_threshold`, `significance_fn`) follows the same induced-submatrix rule as
 `plot_matrix_variable`, with significance scores aggregated over all instances AND all frames
 so that the set of displayed entries — and therefore the grid layout — stays stable for the
-whole animation. If there are repeated `(i, j)` coordinates, only the highest-scoring one is
-kept after thresholding (with a warning). The side length of the (square) matrix is taken as
-`max(maximum(I), maximum(J))`.
+whole animation. If multiple edges between `(i, j)` are selected, only the highest-scoring one is
+kept.
 
 The y-axis range is held fixed for every frame. By default the limits are computed once from
 the full min/max of the displayed data across all selected entries, solvers, instances and
@@ -68,16 +67,16 @@ function animate_matrix_variable(I::Vector{Int}, J::Vector{Int}, x,
     length(var_data) >= 1 || throw(ArgumentError("At least one data array must be provided"))
     n_frames = length(time_steps)
     n_frames >= 1 || throw(ArgumentError("time_steps must contain at least one frame"))
-    nnz = validate_var_data_dims(var_data, n_frames)
-    length(I) == nnz || throw(DimensionMismatch("Length of I must equal number of rows in var_data"))
-    length(J) == nnz || throw(DimensionMismatch("Length of J must equal number of rows in var_data"))
+    n_e = validate_var_data_dims(var_data, n_frames)
+    length(I) == n_e || throw(DimensionMismatch("Length of I must equal number of rows in var_data"))
+    length(J) == n_e || throw(DimensionMismatch("Length of J must equal number of rows in var_data"))
     x_vecs = resolve_x_vecs(x, var_data)
     n_solvers = length(var_data)
     solver_names = resolve_solver_names(solver_names, n_solvers)
     x_label = isnothing(xlabel) ? "Unknown Parameter" : xlabel
 
     # For each entry, combine values across all solvers, instances and frames for significance score
-    entry_scores = compute_entry_scores(var_data, nnz, significance_fn)
+    entry_scores = compute_entry_scores(var_data, n_e, significance_fn)
     I_plot, J_plot, selected_indices = select_matrix_entries(entry_scores, I, J, vis_threshold)
 
     n, grid_pos = matrix_grid_layout(I_plot, J_plot)

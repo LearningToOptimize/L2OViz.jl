@@ -1,8 +1,7 @@
 # L2OViz.jl
 L2OViz.jl visualizes the solutions to multiple instances of an optimization problem.
 It supports visualizing the solutions of the same instances from multiple solvers for comparison.
-It also has a special feature for visualizing (the most interesting rows and columns of) symmetric matrix variables in a 2D layout of subplots which correspond to coordinates in the matrix.
-This can be useful when the variables correspond to a graph for example.
+It also has a special feature for visualizing variables with a graph structure in a grid layout of subplots which correspond to the adjacency matrix.
 
 
 
@@ -18,22 +17,24 @@ contains the values of a 5-dimensional variable for 3 instances of an optimizati
 
 `plot_variable` accepts a variable number of `Matrix` inputs, each corresponding to a solver.
 
-### Symmetric matrix variables
-Symmetric matrix variables can be visualized in a 2D layout of subplots which correspond to coordinates in the matrix.
+### Graph variables
+Variables that correspond to the edges of a (multi-edge) undirected graph can be visualized in a grid layout of subplots which correspond to coordinates in the adjacency matrix.
 
-Symmetric matrix variable data should be provided in COO format.
-It is assumed that, across all the problem instances, the same matrix variable has the same dimensions and sparsity structure.
-The values are still stored as a `Matrix` with `n_instances` columns, where each column contains the nonzero values of the matrix variable in each problem instance.
-In other words, all the variables are treated as vector variables in L2OViz.jl.
+The graph topology is specified by `I` and `J`, ordered vectors containing endpoints of the edges.
+It is assumed that at most one of `(i,j)` and `(j,i)` is present, since the graph is undirected.
+It is assumed that, across all the problem instances, the variable corresponds to the same graph topology.
+The values are still stored as a `Matrix`, where the number of rows is the number of edges of the graph (dimension of the variable), and the number of columns is `n_instances`.
+Each column contains the values of the variable in each problem instance.
+That is, all the variables are treated as vector variables in L2OViz.jl.
 
 In some cases the underlying graph is multi-edge.
-If there are repeated `(i, j)` coordinates, only the highest-scoring one is kept (see [Thresholding](#thresholding)).
+If there are multiple edges between a vertex pair, only the highest-scoring one is kept (see [Thresholding](#thresholding)).
 
 `plot_matrix_variable` accepts a variable number of `Matrix` inputs, each corresponding to a solver.
 
-*Note: if the coordinate-based layout is not needed, you can also visualize the non-zero entries with `plot_variable` in a plain layout.*
+Currently, directed graph variables are not supported.
 
-Currently, asymmetric matrix (directed graph) variables are not supported.
+
 
 ## Visualization
 The values of each variable entry across all the problem instances are visualized in a scatter point subplot.
@@ -53,10 +54,10 @@ The animation can be exported as a GIF.
 When the dimension of the variable to visualize is too high, `vis_threshold` limits the number of entries that are visualized.
 `significance_fn` is used to select the most interesting entries of the variable.
 
-For symmetric matrix variables, the `vis_threshold` columns (in the original full matrix) with the highest max scores are selected.
-Since the matrix is symmetric, doing so effectively selects a `vis_threshold`-by-`vis_threshold` principal submatrix.
+For graph variables, the `vis_threshold` vertices with the highest maximum scores over its edges are selected.
+Only the data on this induced subgraph are visualized.
 
-If there are repeated `(i, j)` coordinates, only the highest-scoring one is kept after thresholding (a warning is emitted).
+If multiple edges between a vertex pair are selected, only the highest-scoring one is kept (with a warning).
 
 By default, `significance_fn` chooses the solutions with the maximum absolute sum across all instances of all solvers.
 This can be used to, for example, visualize the variables where a solver produces highest error compared to a reference (by calling **the plotting functions on the error** instead of the solutions).

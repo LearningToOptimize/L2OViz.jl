@@ -59,7 +59,7 @@ end
 
 """
     select_matrix_entries(entry_scores, I, J, vis_threshold)
-        -> (I_plot, J_plot, selected_indices, filtered::Bool)
+        -> (I_plot, J_plot, selected_indices)
 
 Determine which entries of a symmetric matrix to display, with optional thresholding.
 
@@ -87,32 +87,29 @@ function select_matrix_entries(entry_scores::Vector{<:Real},
 
     # Since the COO is a half representation, both row and column index sets of the full
     # symmetric matrix are union(unique(I), unique(J)).
-    nz_col_indices = sort(union(unique(I), unique(J)))
+    V = union(unique(I), unique(J))
 
-    # Early termination: no need to filter (but still collapse any repeated coordinates).
-    if length(nz_col_indices) <= vis_threshold
+    if length(V) <= vis_threshold
+        # No need to filter. Collapse any repeated edges.
         I_plot, J_plot, selected_indices =
             dedup_repeated_entries(I, J, collect(1:length(I)), entry_scores)
         return I_plot, J_plot, selected_indices
     end
 
-    # Score each index by the maximum of the scores of its entries. Since we assume I and J
-    # do not contain both (i, j) and (j, i), we need to aggregate the scores over both rows
-    # and columns of the input matrix T, to effectively aggregate over columns of the full
-    # symmetric matrix.
-    col_scores = Dict{Int, Float64}()
+    # Score each vertex by the maximum of the scores of its edges
+    v_score = Dict{Int, Float64}()
     for k in 1:length(I)
         s = entry_scores[k]
-        col_scores[I[k]] = max(get(col_scores, I[k], -Inf), s)  # max over the rows of T
-        col_scores[J[k]] = max(get(col_scores, J[k], -Inf), s)  # max over the columns of T
+        # max over all edges connected to k
+        v_score[I[k]] = max(get(v_score, I[k], -Inf), s)
+        v_score[J[k]] = max(get(v_score, J[k], -Inf), s)
     end
-    # Select the vis_threshold highest-scoring rows/columns of the full symmetric matrix.
-    sorted_indices = sort(nz_col_indices, by=c -> col_scores[c], rev=true)
-    selected_vertices = Set(sorted_indices[1:min(vis_threshold, end)])
-    # Keep the entries whose endpoints are both among the selected rows/columns. These indices
-    # point into the original I/J (and thus into each solver's data rows).
+    V_sorted = sort(V, by=c -> v_score[c], rev=true)
+    V_subgraph = Set(V_sorted[1:min(vis_threshold, end)])
+    # Keep the edges whose endpoints are in the set of selected vertices.
+    # These indices point into the original I/J.
     selected_indices = findall(
-        k -> I[k] ∈ selected_vertices && J[k] ∈ selected_vertices,
+        k -> I[k] ∈ V_subgraph && J[k] ∈ V_subgraph,
         1:length(I)
     )
     isempty(selected_indices) && throw(ArgumentError("No entries selected for display; consider increasing vis_threshold"))

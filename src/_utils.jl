@@ -136,9 +136,9 @@ end
 # Compute dimension of the plot grid and the mapping (i, j) → grid cell.
 function matrix_grid_layout(I_plot, J_plot)
     # (i, j) should be sorted in the resulting grid
-    principal_submat_indices = sort(union(unique(I_plot), unique(J_plot)))
-    index_map = Dict(c => idx for (idx, c) in enumerate(principal_submat_indices))
-    n = length(principal_submat_indices)
+    V_subgraph_sorted = sort(union(unique(I_plot), unique(J_plot)))
+    index_map = Dict(c => idx for (idx, c) in enumerate(V_subgraph_sorted))
+    n = length(V_subgraph_sorted)
     return n, (i, j) -> (index_map[i], index_map[j])
 end
 
