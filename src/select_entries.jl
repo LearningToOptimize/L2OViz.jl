@@ -118,5 +118,5 @@ function select_matrix_entries(entry_scores::Vector{<:Real},
         I[selected_indices], J[selected_indices],
         selected_indices, entry_scores
     )
-    return I_plot, J_plot, selected_indices, true
+    return I_plot, J_plot, selected_indices
 end

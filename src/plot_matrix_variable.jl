@@ -46,16 +46,11 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matri
     solver_names = resolve_solver_names(solver_names, n_solvers)
     x_label = isnothing(xlabel) ? "Unknown Parameter" : xlabel
 
-    # Full matrix dimension; symmetric matrix is square so the side length is the
-    # largest index appearing in either coordinate.
-    n = max(maximum(I), maximum(J))
-
     # For each entry, combine values across all solvers and all instances for significance score
     entry_scores = compute_entry_scores(var_data, nnz, significance_fn)
-    I_plot, J_plot, selected_indices, filtered =
-        select_matrix_entries(entry_scores, I, J, vis_threshold)
+    I_plot, J_plot, selected_indices = select_matrix_entries(entry_scores, I, J, vis_threshold)
 
-    n, grid_pos = matrix_grid_layout(I_plot, J_plot, filtered, n)
+    n, grid_pos = matrix_grid_layout(I_plot, J_plot)
 
     solver_colors = solver_palette(n_solvers)
 

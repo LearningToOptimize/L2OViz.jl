@@ -48,9 +48,7 @@ end  # select_variable_entries
         I = [1, 1]
         J = [2, 3]
         scores = [5.0, 3.0]
-        I_plot, J_plot, selected_indices, filtered =
-            select_matrix_entries(scores, I, J, 3)
-        @test filtered == false
+        I_plot, J_plot, selected_indices = select_matrix_entries(scores, I, J, 3)
         # All entries are displayed; selected_indices points into the original I/J.
         @test selected_indices == [1, 2]
         @test I_plot == I[selected_indices] == I
@@ -63,9 +61,7 @@ end  # select_variable_entries
         I = [1, 1]
         J = [2, 3]
         scores = [1.0, 5.0]
-        I_plot, J_plot, selected_indices, filtered =
-            select_matrix_entries(scores, I, J, 2)
-        @test filtered == true
+        I_plot, J_plot, selected_indices = select_matrix_entries(scores, I, J, 2)
         # Entry (1, 3) scores highest, so rows/columns {1, 3} are selected and only entry
         # k = 2 survives.
         @test selected_indices == [2]
@@ -78,9 +74,7 @@ end  # select_variable_entries
         I = [1, 2, 3]
         J = [4, 4, 4]
         scores = [10.0, 5.0, 3.0]
-        I_plot, J_plot, selected_indices, filtered =
-            select_matrix_entries(scores, I, J, 2)
-        @test filtered == true
+        I_plot, J_plot, selected_indices = select_matrix_entries(scores, I, J, 2)
         # Only entry k = 1 has both endpoints in {1, 4}; (2, 4) and (3, 4) are dropped.
         @test selected_indices == [1]
         @test I_plot == [1]
@@ -94,11 +88,10 @@ end  # select_variable_entries
         I = [1, 1, 2]
         J = [2, 2, 3]
         scores = [3.0, 7.0, 1.0]
-        I_plot, J_plot, selected_indices, filtered =
+        I_plot, J_plot, selected_indices =
             suppress_warnings() do
                 select_matrix_entries(scores, I, J, 5)
             end
-        @test filtered == false
         # (1, 2) kept via its higher-scoring row k = 2, plus the unique (2, 3) at k = 3.
         @test selected_indices == [2, 3]
         @test I_plot == I[selected_indices] == [1, 2]
@@ -112,11 +105,10 @@ end  # select_variable_entries
         I = [1, 1, 2]
         J = [2, 2, 4]
         scores = [3.0, 9.0, 1.0]
-        I_plot, J_plot, selected_indices, filtered =
+        I_plot, J_plot, selected_indices =
             suppress_warnings() do
                 select_matrix_entries(scores, I, J, 2)
             end
-        @test filtered == true
         @test selected_indices == [2]
         @test I_plot == [1]
         @test J_plot == [2]
