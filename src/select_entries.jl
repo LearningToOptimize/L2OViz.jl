@@ -33,8 +33,8 @@ function dedup_repeated_entries(I_plot::Vector{Int}, J_plot::Vector{Int},
     duplicate_pairs = Set{Tuple{Int, Int}}()
     for k in eachindex(I_plot)
         pair = (I_plot[k], J_plot[k])
-        previous_position = get(best_idx_for_pair, pair, nothing)
-        if isnothing(previous_position)
+        previous_position = get(best_idx_for_pair, pair, 0)
+        if previous_position == 0
             # no duplicate seen so far
             best_idx_for_pair[pair] = k
         else
