@@ -82,6 +82,8 @@ function select_matrix_entries(entry_scores::Vector{<:Real},
                                 I::Vector{Int}, J::Vector{Int},
                                 vis_threshold::Int)
     vis_threshold > 0 || throw(ArgumentError("vis_threshold must be positive"))
+    all(I .>= 1) || throw(ArgumentError("All I indices must be >= 1"))
+    all(J .>= 1) || throw(ArgumentError("All J indices must be >= 1"))
 
     # Since the COO is a half representation, both row and column index sets of the full
     # symmetric matrix are union(unique(I), unique(J)).
@@ -91,7 +93,7 @@ function select_matrix_entries(entry_scores::Vector{<:Real},
     if length(nz_col_indices) <= vis_threshold
         I_plot, J_plot, selected_indices =
             dedup_repeated_entries(I, J, collect(1:length(I)), entry_scores)
-        return I_plot, J_plot, selected_indices, false
+        return I_plot, J_plot, selected_indices
     end
 
     # Score each index by the maximum of the scores of its entries. Since we assume I and J
