@@ -2,15 +2,15 @@
 default_significance(values::AbstractVector) = sum(abs, values)
 
 """
-    select_variable_entries(scores, vis_threshold) -> (selected_indices, filtered::Bool)
+    select_variable_entries(scores, vis_threshold) -> selected_indices
 
 Return the indices of the `vis_threshold` highest-scoring entries, sorted ascending.
-If `length(scores) ≤ vis_threshold`, returns all indices and `filtered = false`.
+If `length(scores) ≤ vis_threshold`, returns all indices.
 """
 function select_variable_entries(scores::Vector{<:Real}, vis_threshold::Int)
     vis_threshold > 0 || throw(ArgumentError("vis_threshold must be positive"))
-    length(scores) <= vis_threshold && return collect(1:length(scores)), false
-    return sort(partialsortperm(scores, 1:vis_threshold, rev=true)), true
+    length(scores) <= vis_threshold && return collect(1:length(scores))
+    return sort(partialsortperm(scores, 1:vis_threshold, rev=true))
 end
 
 """

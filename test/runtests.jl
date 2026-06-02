@@ -12,31 +12,27 @@ suppress_warnings(f) = with_logger(f, NullLogger())
 
     @testset "no filtering when length(scores) ≤ vis_threshold" begin
         scores = [3.0, 1.0, 4.0, 1.0, 5.0]
-        indices, filtered = select_variable_entries(scores, 5)
+        indices = select_variable_entries(scores, 5)
         @test indices == [1, 2, 3, 4, 5]
-        @test filtered == false
     end
 
     @testset "no filtering when length(scores) < vis_threshold" begin
         scores = [2.0, 7.0]
-        indices, filtered = select_variable_entries(scores, 10)
+        indices = select_variable_entries(scores, 10)
         @test indices == [1, 2]
-        @test filtered == false
     end
 
     @testset "select top-k" begin
         # Scores: idx1=3, idx2=1, idx3=4, idx4=1, idx5=5 → top 3: idx5,idx3,idx1
         scores = [3.0, 1.0, 4.0, 1.0, 5.0]
-        indices, filtered = select_variable_entries(scores, 3)
+        indices = select_variable_entries(scores, 3)
         @test indices == [1, 3, 5]
-        @test filtered == true
     end
 
     @testset "vis_threshold=1 returns single highest-scoring index" begin
         scores = [3.0, 1.0, 4.0, 1.0, 5.0]
-        indices, filtered = select_variable_entries(scores, 1)
+        indices = select_variable_entries(scores, 1)
         @test indices == [5]
-        @test filtered == true
     end
 
 end  # select_variable_entries
