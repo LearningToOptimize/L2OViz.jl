@@ -1,7 +1,7 @@
 """
     animate_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, time_steps,
                             var_data::Union{AbstractMatrix, AbstractArray{<:Any,3}}...;
-                            solver_names=nothing, n=nothing,
+                            solver_names=nothing,
                             xlabel=nothing, var_name="",
                             vis_threshold::Int=20,
                             significance_fn=default_significance,
@@ -35,8 +35,8 @@ Thresholding (`vis_threshold`, `significance_fn`) follows the same induced-subma
 `plot_matrix_variable`, with significance scores aggregated over all instances AND all frames
 so that the set of displayed entries — and therefore the grid layout — stays stable for the
 whole animation. If there are repeated `(i, j)` coordinates, only the highest-scoring one is
-kept after thresholding (with a warning). `n` fixes the side length of the (square) matrix;
-otherwise inferred from `max(maximum(I), maximum(J))`.
+kept after thresholding (with a warning). The side length of the (square) matrix is taken as
+`max(maximum(I), maximum(J))`.
 
 The y-axis range is held fixed for every frame. By default the limits are computed once from
 the full min/max of the displayed data across all selected entries, solvers, instances and
@@ -55,7 +55,7 @@ end
 function animate_matrix_variable(I::Vector{Int}, J::Vector{Int}, x,
                                  time_steps::AbstractVector,
                                  var_data::Union{AbstractMatrix, AbstractArray{<:Any,3}}...;
-                                 solver_names=nothing, n=nothing,
+                                 solver_names=nothing,
                                  xlabel=nothing, var_name="",
                                  vis_threshold::Int=20,
                                  significance_fn=default_significance,
@@ -76,24 +76,21 @@ function animate_matrix_variable(I::Vector{Int}, J::Vector{Int}, x,
     solver_names = resolve_solver_names(solver_names, n_solvers)
     x_label = isnothing(xlabel) ? "Unknown Parameter" : xlabel
 
-    # Resolve full matrix dimension; symmetric matrix is square
-    effective_n_full = isnothing(n) ? max(maximum(I), maximum(J)) : n
-
-    all(1 .<= I .<= effective_n_full) || throw(ArgumentError("All row indices must be in [1, n=$effective_n_full]"))
-    all(1 .<= J .<= effective_n_full) || throw(ArgumentError("All column indices must be in [1, n=$effective_n_full]"))
+    # Full matrix dimension; symmetric matrix is square so the side length is the
+    # largest index appearing in either coordinate.
+    n = max(maximum(I), maximum(J))
 
     # For each entry, combine values across all solvers, instances and frames for significance score
     entry_scores = compute_entry_scores(var_data, nnz, significance_fn)
     I_plot, J_plot, selected_indices, filtered =
         select_matrix_entries(entry_scores, I, J, vis_threshold)
 
-    n_grid_rows, n_grid_cols, grid_pos =
-        matrix_grid_layout(I_plot, J_plot, filtered, effective_n_full)
+    n, grid_pos = matrix_grid_layout(I_plot, J_plot, filtered, n)
 
     solver_colors = solver_palette(n_solvers)
 
     # Extra vertical space at the top accommodates the time-step label.
-    fig = Figure(size=(320 * n_grid_cols, 260 * n_grid_rows + 120))
+    fig = Figure(size=(320 * n, 260 * n + 120))
 
     # Observable that drives the animation. Callers mutate this to advance frames.
     frame_obs = Observable(1)
@@ -104,7 +101,7 @@ function animate_matrix_variable(I::Vector{Int}, J::Vector{Int}, x,
           fontsize=20, tellwidth=false, halign=:center)
 
     # Subplot grid lives in its own GridLayout so the matrix coordinates map cleanly.
-    gl = fig[1, 1] = GridLayout(n_grid_rows, n_grid_cols)
+    gl = fig[1, 1] = GridLayout(n, n)
 
     axes, legend_handles = draw_matrix_panels!(
         gl, var_data, x_vecs, x_label, var_name,

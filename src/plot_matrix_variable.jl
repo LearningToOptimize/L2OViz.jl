@@ -1,6 +1,6 @@
 """
     plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matrix...;
-                         solver_names=nothing, n=nothing,
+                         solver_names=nothing,
                          xlabel=nothing, var_name="",
                          vis_threshold::Int=20, significance_fn=default_significance) -> Figure
 
@@ -29,11 +29,11 @@ score of coordinate `(I[k], J[k])`, and the score of each column/row is the max 
 that column/row. If there are repeated `(i, j)` coordinates, only the highest-scoring one is
 kept after thresholding (with a warning).
 
-**Grid dimensions**: `n` fixes the side length of the (square) matrix; otherwise
-`max(maximum(I), maximum(J))` is used.
+**Grid dimensions**: the side length of the (square) matrix is taken as
+`max(maximum(I), maximum(J))`.
 """
 function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matrix...;
-                              solver_names=nothing, n=nothing,
+                              solver_names=nothing,
                               xlabel=nothing, var_name="",
                               vis_threshold::Int=20,
                               significance_fn=default_significance)
@@ -46,24 +46,21 @@ function plot_matrix_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matri
     solver_names = resolve_solver_names(solver_names, n_solvers)
     x_label = isnothing(xlabel) ? "Unknown Parameter" : xlabel
 
-    # Resolve full matrix dimension; symmetric matrix is square
-    effective_n_full = isnothing(n) ? max(maximum(I), maximum(J)) : n
-
-    all(1 .<= I .<= effective_n_full) || throw(ArgumentError("All row indices must be in [1, n=$effective_n_full]"))
-    all(1 .<= J .<= effective_n_full) || throw(ArgumentError("All column indices must be in [1, n=$effective_n_full]"))
+    # Full matrix dimension; symmetric matrix is square so the side length is the
+    # largest index appearing in either coordinate.
+    n = max(maximum(I), maximum(J))
 
     # For each entry, combine values across all solvers and all instances for significance score
     entry_scores = compute_entry_scores(var_data, nnz, significance_fn)
     I_plot, J_plot, selected_indices, filtered =
         select_matrix_entries(entry_scores, I, J, vis_threshold)
 
-    n_grid_rows, n_grid_cols, grid_pos =
-        matrix_grid_layout(I_plot, J_plot, filtered, effective_n_full)
+    n, grid_pos = matrix_grid_layout(I_plot, J_plot, filtered, n)
 
     solver_colors = solver_palette(n_solvers)
 
-    fig = Figure(size=(320 * n_grid_cols, 260 * n_grid_rows + 60))
-    gl = fig[1, 1] = GridLayout(n_grid_rows, n_grid_cols)
+    fig = Figure(size=(320 * n, 260 * n + 60))
+    gl = fig[1, 1] = GridLayout(n, n)
 
     axes, legend_handles = draw_matrix_panels!(
         gl, var_data, x_vecs, x_label, var_name,

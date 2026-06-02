@@ -134,17 +134,16 @@ function vector_grid_layout(n_plot::Int)
 end
 
 # Matrix layout: when entries have been filtered, extract a principal submatrix from
-# (`I_plot`, `J_plot`); otherwise
-# keep the full effective_n_full × effective_n_full grid. `grid_pos(i, j)` maps original
-# (i, j) → grid cell.
-function matrix_grid_layout(I_plot, J_plot, filtered::Bool, effective_n_full::Int)
+# (`I_plot`, `J_plot`)
+# `grid_pos(i, j)` maps original (i, j) → grid cell.
+function matrix_grid_layout(I_plot, J_plot, filtered::Bool, n::Int)
     if filtered
         principal_submat_indices = sort(union(unique(I_plot), unique(J_plot)))
         index_map = Dict(c => idx for (idx, c) in enumerate(principal_submat_indices))
         n = length(principal_submat_indices)
-        return n, n, (i, j) -> (index_map[i], index_map[j])
+        return n, (i, j) -> (index_map[i], index_map[j])
     else
-        return effective_n_full, effective_n_full, (i, j) -> (i, j)
+        return n, (i, j) -> (i, j)
     end
 end
 
