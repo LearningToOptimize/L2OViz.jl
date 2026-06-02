@@ -113,6 +113,7 @@ function select_matrix_entries(entry_scores::Vector{<:Real},
         k -> I[k] ∈ selected_vertices && J[k] ∈ selected_vertices,
         1:length(I)
     )
+    isempty(selected_indices) && throw(ArgumentError("No entries selected for display; consider increasing vis_threshold"))
     # Collapse any duplicate (i, j) coordinates among the selected entries.
     I_plot, J_plot, selected_indices = dedup_repeated_entries(
         I[selected_indices], J[selected_indices],
