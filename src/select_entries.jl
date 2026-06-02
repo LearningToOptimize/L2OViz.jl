@@ -66,7 +66,7 @@ Returns the coordinates `I_plot`, `J_plot` of the entries to display, together w
 `selected_indices`, their positions in the original `I`/`J` (so `I_plot == I[selected_indices]`
 and each entry's data is row `selected_indices[k]` of every solver's `var_data`). Both are
 needed downstream: `(I_plot[k], J_plot[k])` places panel `k` on the grid, while
-`selected_indices[k]` locates its data. `filtered` indicates whether thresholding was applied.
+`selected_indices[k]` locates its data.
 
 If the entries selected for display contain repeated exact `(i, j)` coordinates (which can
 happen when the variable encodes a multi-edge graph), only the highest-scoring occurrence of
