@@ -17,14 +17,12 @@ function _get_power_system_data(network::Dict)
     n_branches = length(sorted_branch_keys)
     n_buses    = length(network["bus"])
 
-    # Bus pairs come from PowerModels' precomputed ref, keyed by (f_bus, t_bus) tuples.
-    # We sort the keys lexicographically to fix a deterministic row ordering, so callers
-    # must supply bus-pair data rows in this same sorted (f_bus, t_bus) order.
-    buspair_dict = PowerModels.build_ref(network)[:it][:pm][:nw][0][:buspairs]
-    sorted_buspair_keys = sort(collect(keys(buspair_dict)))
-    I_buspairs = [buspair_key[1] for buspair_key in sorted_buspair_keys]
-    J_buspairs = [buspair_key[2] for buspair_key in sorted_buspair_keys]
-    n_buspairs = length(sorted_buspair_keys)
+    # Bus pairs are the unique (f_bus, t_bus) branch endpoints, kept in order of first
+    # occurrence among the sorted branches; parallel branches collapse to a single pair.
+    unique_buspairs = unique(zip(I_branches, J_branches))
+    I_buspairs = [buspair[1] for buspair in unique_buspairs]
+    J_buspairs = [buspair[2] for buspair in unique_buspairs]
+    n_buspairs = length(unique_buspairs)
 
     return I_branches, J_branches, n_branches, n_buses, I_buspairs, J_buspairs, n_buspairs
 end
@@ -49,14 +47,14 @@ Two calling modes, determined by `T`:
 `x` is either a single `Vector` (shared across solvers) or a `Vector` of `Vector`s (one per solver).
 
 **Variable dispatch** (when `flat=false`):
-- Dimension equals the number of **branches** → `plot_graph_variable`, with `f_bus`/`t_bus` indices in
-  sorted branch key order.
-- Dimension equals the number of **bus pairs** → `plot_graph_variable`, with `f_bus`/`t_bus` indices in
-  sorted `(f_bus, t_bus)` bus-pair order (parallel branches collapse to one pair).
-- Dimension equals the number of **buses** → `plot_variable`.
+- Dimension equals the number of **branches** → [`plot_graph_variable`](@ref), where `I`/`J` are 
+  `f_bus`/`t_bus` in sorted branch key order.
+- Dimension equals the number of **bus pairs** → [`plot_graph_variable`](@ref), where `I`/`J` are
+  `f_bus`/`t_bus` of the bus pairs in order of first occurrences in sorted branches.
+- Dimension equals the number of **buses** → [`plot_variable`](@ref).
 
-Branches are checked before bus pairs, so a system whose branch and bus-pair counts coincide
-(no parallel branches) is treated as branch data.
+All the branches are assumed to be active and are accounted for.
+
 
 **Keyword arguments**: `system_name` (label used in figure titles and output filenames; defaults to the
 network's `"name"` field, or `"system"` if absent), `solver_names`, `output_dir` (default `"."`),
@@ -191,14 +189,13 @@ Within either mode, different solvers may supply different shapes for the same v
 
 **Variable dispatch** (when `flat=false`):
 - Dimension equals the number of **branches** → [`animate_graph_variable`](@ref),
-  with `f_bus`/`t_bus` indices in sorted branch key order.
+  where `I`/`J` are `f_bus`/`t_bus` in sorted branch key order.
 - Dimension equals the number of **bus pairs** → [`animate_graph_variable`](@ref),
-  with `f_bus`/`t_bus` indices in sorted `(f_bus, t_bus)` bus-pair order (parallel branches
-  collapse to one pair).
+  where `I`/`J` are `f_bus`/`t_bus` of the bus pairs in order of first occurrences
+  in sorted branches.
 - Dimension equals the number of **buses** → [`animate_variable`](@ref).
 
-Branches are checked before bus pairs, so a system whose branch and bus-pair counts coincide
-(no parallel branches) is treated as branch data.
+All the branches are assumed to be active and are accounted for.
 
 **Keyword arguments**: `system_name` (label used in figure titles and output filenames; defaults to the
 network's `"name"` field, or `"system"` if absent), `solver_names`, `output_dir` (default `"."`),
