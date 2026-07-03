@@ -126,10 +126,15 @@ function viz_opf(
     x,
     var_data...;
     system_name::String=system_identifier,
+    flat::Bool=false,
     kwargs...
 )
-    network = make_basic_network(pglib(system_identifier))
-    return viz_opf(network, variables, x, var_data...; system_name=system_name, kwargs...)
+    if flat
+        network = Dict()
+    else
+        network = make_basic_network(pglib(system_identifier))
+    end
+    return viz_opf(network, variables, x, var_data...; system_name=system_name, flat=flat, kwargs...)
 end
 
 """
@@ -279,8 +284,13 @@ function animate_opf(
     time_steps::AbstractVector,
     var_data...;
     system_name::String=system_identifier,
+    flat::Bool=false,
     kwargs...
 )
-    network = make_basic_network(pglib(system_identifier))
-    return animate_opf(network, variables, x, time_steps, var_data...; system_name=system_name, kwargs...)
+    if flat
+        network = Dict()
+    else
+        network = make_basic_network(pglib(system_identifier))
+    end
+    return animate_opf(network, variables, x, time_steps, var_data...; system_name=system_name, flat=flat, kwargs...)
 end
