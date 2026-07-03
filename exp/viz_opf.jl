@@ -6,7 +6,9 @@ using L2OViz
 using PGLib
 using PowerModels
 
-# Load from-bus/to-bus indices and bus/branch counts from a PowerModels network dict.
+# Load branch and bus-pair connectivity (from-bus/to-bus indices) plus component counts
+# from a PowerModels network dict. Bus pairs are the unique branch endpoint pairs, so
+# parallel branches sharing endpoints collapse to a single pair.
 function _get_power_system_data(network::Dict)
     branch_dict = network["branch"]
     sorted_branch_keys = sort(collect(keys(branch_dict)), by=k -> parse(Int, string(k)))
@@ -14,7 +16,17 @@ function _get_power_system_data(network::Dict)
     J_branches = [branch_dict[k]["t_bus"] for k in sorted_branch_keys]
     n_branches = length(sorted_branch_keys)
     n_buses    = length(network["bus"])
-    return I_branches, J_branches, n_branches, n_buses
+
+    # Bus pairs come from PowerModels' precomputed ref, keyed by (f_bus, t_bus) tuples.
+    # We sort the keys lexicographically to fix a deterministic row ordering, so callers
+    # must supply bus-pair data rows in this same sorted (f_bus, t_bus) order.
+    buspair_dict = PowerModels.build_ref(network)[:it][:pm][:nw][0][:buspairs]
+    sorted_buspair_keys = sort(collect(keys(buspair_dict)))
+    I_buspairs = [buspair_key[1] for buspair_key in sorted_buspair_keys]
+    J_buspairs = [buspair_key[2] for buspair_key in sorted_buspair_keys]
+    n_buspairs = length(sorted_buspair_keys)
+
+    return I_branches, J_branches, n_branches, n_buses, I_buspairs, J_buspairs, n_buspairs
 end
 
 """
@@ -39,9 +51,15 @@ Two calling modes, determined by `T`:
 **Variable dispatch** (when `flat=false`):
 - Dimension equals the number of **branches** → `plot_graph_variable`, with `f_bus`/`t_bus` indices in
   sorted branch key order.
+- Dimension equals the number of **bus pairs** → `plot_graph_variable`, with `f_bus`/`t_bus` indices in
+  sorted `(f_bus, t_bus)` bus-pair order (parallel branches collapse to one pair).
 - Dimension equals the number of **buses** → `plot_variable`.
 
-**Keyword arguments**: `system_name`, `solver_names`, `output_dir` (default `"."`),
+Branches are checked before bus pairs, so a system whose branch and bus-pair counts coincide
+(no parallel branches) is treated as branch data.
+
+**Keyword arguments**: `system_name` (label used in figure titles and output filenames; defaults to the
+network's `"name"` field, or `"system"` if absent), `solver_names`, `output_dir` (default `"."`),
 `vis_threshold` (default `20`), `flat` (default `false`, bypasses network loading and always uses
 `plot_variable`), `xlabel` (forwarded to the underlying plotting functions; defaults to their default).
 Output images are named `{system_name}_{variable}.png`.
@@ -59,7 +77,8 @@ function viz_opf(
     xlabel=nothing
 ) where {T <: Union{Matrix, Dict}}
     if !flat
-        I_branches, J_branches, n_branches, n_buses = _get_power_system_data(network)
+        I_branches, J_branches, n_branches, n_buses,
+            I_buspairs, J_buspairs, n_buspairs = _get_power_system_data(network)
     end
 
     if T <: Matrix
@@ -95,8 +114,14 @@ function viz_opf(
                                        var_name=var_name,
                                        vis_threshold=vis_threshold,
                                        xlabel=xlabel)
+        elseif n_dim == n_buspairs
+            fig = plot_graph_variable(I_buspairs, J_buspairs, x, solvers_data...;
+                                       solver_names=solver_names,
+                                       var_name=var_name,
+                                       vis_threshold=vis_threshold,
+                                       xlabel=xlabel)
         else
-            n_dim == n_buses || throw(ArgumentError("Variable '$var_name' has dimension $n_dim, expected $n_branches (branches) or $n_buses (buses)"))
+            n_dim == n_buses || throw(ArgumentError("Variable '$var_name' has dimension $n_dim, expected $n_branches (branches), $n_buspairs (bus pairs) or $n_buses (buses)"))
             fig = plot_variable(x, solvers_data...;
                                 solver_names=solver_names,
                                 var_name=var_name,
@@ -167,9 +192,16 @@ Within either mode, different solvers may supply different shapes for the same v
 **Variable dispatch** (when `flat=false`):
 - Dimension equals the number of **branches** → [`animate_graph_variable`](@ref),
   with `f_bus`/`t_bus` indices in sorted branch key order.
+- Dimension equals the number of **bus pairs** → [`animate_graph_variable`](@ref),
+  with `f_bus`/`t_bus` indices in sorted `(f_bus, t_bus)` bus-pair order (parallel branches
+  collapse to one pair).
 - Dimension equals the number of **buses** → [`animate_variable`](@ref).
 
-**Keyword arguments**: `system_name`, `solver_names`, `output_dir` (default `"."`),
+Branches are checked before bus pairs, so a system whose branch and bus-pair counts coincide
+(no parallel branches) is treated as branch data.
+
+**Keyword arguments**: `system_name` (label used in figure titles and output filenames; defaults to the
+network's `"name"` field, or `"system"` if absent), `solver_names`, `output_dir` (default `"."`),
 `vis_threshold` (default `20`), `flat` (default `false`, bypasses network loading and always uses
 `animate_variable`), `xlabel`, `time_label` (default `"t"`), `framerate` (default `10`),
 `ylims` (default `nothing`). Output files are named `{system_name}_{variable}.gif`.
@@ -201,7 +233,8 @@ function animate_opf(
         "All var_data elements must be Dicts, or all must be arrays (Matrix or 3D array)"))
 
     if !flat
-        I_branches, J_branches, n_branches, n_buses = _get_power_system_data(network)
+        I_branches, J_branches, n_branches, n_buses,
+            I_buspairs, J_buspairs, n_buspairs = _get_power_system_data(network)
     end
 
     if all_array
@@ -248,9 +281,18 @@ function animate_opf(
                                                      xlabel=xlabel,
                                                      time_label=time_label,
                                                      ylims=ylims)
+        elseif n_dim == n_buspairs
+            fig, frame_obs = animate_graph_variable(I_buspairs, J_buspairs, x, time_steps,
+                                                     solvers_data...;
+                                                     solver_names=solver_names,
+                                                     var_name=var_name,
+                                                     vis_threshold=vis_threshold,
+                                                     xlabel=xlabel,
+                                                     time_label=time_label,
+                                                     ylims=ylims)
         else
             n_dim == n_buses || throw(ArgumentError(
-                "Variable '$var_name' has dimension $n_dim, expected $n_branches (branches) or $n_buses (buses)"))
+                "Variable '$var_name' has dimension $n_dim, expected $n_branches (branches), $n_buspairs (bus pairs) or $n_buses (buses)"))
             fig, frame_obs = animate_variable(x, time_steps, solvers_data...;
                                               solver_names=solver_names,
                                               var_name=var_name,
