@@ -41,8 +41,7 @@ Two calling modes, determined by `T`:
   sorted branch key order.
 - Dimension equals the number of **buses** → `plot_variable`.
 
-**Keyword arguments**: `system_name` (label used in figure titles and output filenames; defaults to the
-network's `"name"` field, or `"system"` if absent), `solver_names`, `output_dir` (default `"."`),
+**Keyword arguments**: `system_name`, `solver_names`, `output_dir` (default `"."`),
 `vis_threshold` (default `20`), `flat` (default `false`, bypasses network loading and always uses
 `plot_variable`), `xlabel` (forwarded to the underlying plotting functions; defaults to their default).
 Output images are named `{system_name}_{variable}.png`.
@@ -124,11 +123,11 @@ function viz_opf(
     system_identifier::String,
     variables::Union{String, Vector{String}},
     x,
-    var_data...;
+    var_data::T...;
     system_name::String=system_identifier,
     flat::Bool=false,
     kwargs...
-)
+) where {T <: Union{Matrix, Dict}}
     if flat
         network = Dict()
     else
@@ -170,8 +169,7 @@ Within either mode, different solvers may supply different shapes for the same v
   with `f_bus`/`t_bus` indices in sorted branch key order.
 - Dimension equals the number of **buses** → [`animate_variable`](@ref).
 
-**Keyword arguments**: `system_name` (label used in figure titles and output filenames; defaults to the
-network's `"name"` field, or `"system"` if absent), `solver_names`, `output_dir` (default `"."`),
+**Keyword arguments**: `system_name`, `solver_names`, `output_dir` (default `"."`),
 `vis_threshold` (default `20`), `flat` (default `false`, bypasses network loading and always uses
 `animate_variable`), `xlabel`, `time_label` (default `"t"`), `framerate` (default `10`),
 `ylims` (default `nothing`). Output files are named `{system_name}_{variable}.gif`.
