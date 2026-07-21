@@ -75,11 +75,32 @@ function resolve_x_vecs(x, var_data)
     end
 end
 
-# Per-solver scatter color, cycling through Makie.wong_colors() if there are more solvers
-# than palette entries.
-function solver_palette(n_solvers::Int)
-    palette = Makie.wong_colors()
-    return [palette[mod1(i, length(palette))] for i in 1:n_solvers]
+# Per-solver scatter color, cycling through `palette` if there are more solvers than palette
+# entries. `palette` may be:
+# - `nothing`: Makie's default categorical palette (wong_colors).
+# - a `Symbol`: the name of a Makie/ColorSchemes palette (e.g. `:tab10`, `:viridis`).
+# - a vector of colors (anything Makie accepts, e.g. `[:red, :blue]`).
+function solver_palette(n_solvers::Int, palette=nothing)
+    colors = resolve_palette_colors(palette, n_solvers)
+    isempty(colors) && throw(ArgumentError("palette must contain at least one color"))
+    return [colors[mod1(i, length(colors))] for i in 1:n_solvers]
+end
+
+resolve_palette_colors(::Nothing, ::Int) = Makie.wong_colors()
+resolve_palette_colors(palette, ::Int) = palette
+
+# Resolve a named palette into a vector of colors. `categorical_colors` samples continuous
+# colormaps (e.g. `:viridis`) into `n_solvers` evenly spaced colors so distinct solvers stay
+# visually separated, and returns categorical schemes' (e.g. `:tab10`) discrete swatches. It
+# errors only when a categorical scheme has fewer swatches than `n_solvers`, in which case we
+# fall back to the full swatch set for `solver_palette` to cycle through.
+function resolve_palette_colors(palette::Symbol, n_solvers::Int)
+    try
+        return Makie.categorical_colors(palette, n_solvers)
+    catch err
+        err isa ErrorException || rethrow()
+        return Makie.to_colormap(palette)
+    end
 end
 
 # Per-row significance score for the variable: aggregate every solver's values at row `k`
