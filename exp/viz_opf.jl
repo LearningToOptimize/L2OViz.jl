@@ -77,7 +77,8 @@ function viz_opf(
     flat::Bool=false,
     xlabel=nothing,
     symlog::Bool=false,
-    palette=nothing
+    palette=nothing,
+    alpha::Real=1.0
 ) where {T <: Union{Matrix, Dict}}
     if !flat
         I_branches, J_branches, n_branches, n_buses,
@@ -112,7 +113,8 @@ function viz_opf(
                                 vis_threshold=vis_threshold,
                                 xlabel=xlabel,
                                 symlog=symlog,
-                                palette=palette)
+                                palette=palette,
+                                alpha=alpha)
         elseif n_dim == n_branches
             fig = plot_graph_variable(I_branches, J_branches, x, solvers_data...;
                                        solver_names=solver_names,
@@ -120,7 +122,8 @@ function viz_opf(
                                        vis_threshold=vis_threshold,
                                        xlabel=xlabel,
                                        symlog=symlog,
-                                       palette=palette)
+                                       palette=palette,
+                                       alpha=alpha)
         elseif n_dim == n_buspairs
             fig = plot_graph_variable(I_buspairs, J_buspairs, x, solvers_data...;
                                        solver_names=solver_names,
@@ -128,7 +131,8 @@ function viz_opf(
                                        vis_threshold=vis_threshold,
                                        xlabel=xlabel,
                                        symlog=symlog,
-                                       palette=palette)
+                                       palette=palette,
+                                       alpha=alpha)
         else
             n_dim == n_buses || throw(ArgumentError("Variable '$var_name' has dimension $n_dim, expected $n_branches (branches), $n_buspairs (bus pairs) or $n_buses (buses)"))
             fig = plot_variable(x, solvers_data...;
@@ -137,7 +141,8 @@ function viz_opf(
                                 vis_threshold=vis_threshold,
                                 xlabel=xlabel,
                                 symlog=symlog,
-                                palette=palette)
+                                palette=palette,
+                                alpha=alpha)
         end
 
         # Add a figure-level title above the subplot grid. Row 0 places the
@@ -236,6 +241,7 @@ function animate_opf(
     ylims::Union{Nothing,Tuple{Real,Real}}=nothing,
     symlog::Bool=false,
     palette=nothing,
+    alpha::Real=1.0,
 )
     length(var_data) >= 1 || throw(ArgumentError("At least one var_data element is required"))
 
@@ -288,7 +294,8 @@ function animate_opf(
                                               time_label=time_label,
                                               ylims=ylims,
                                               symlog=symlog,
-                                              palette=palette)
+                                              palette=palette,
+                                              alpha=alpha)
         elseif n_dim == n_branches
             fig, frame_obs = animate_graph_variable(I_branches, J_branches, x, time_steps,
                                                      solvers_data...;
@@ -299,7 +306,8 @@ function animate_opf(
                                                      time_label=time_label,
                                                      ylims=ylims,
                                                      symlog=symlog,
-                                                     palette=palette)
+                                                     palette=palette,
+                                                     alpha=alpha)
         elseif n_dim == n_buspairs
             fig, frame_obs = animate_graph_variable(I_buspairs, J_buspairs, x, time_steps,
                                                      solvers_data...;
@@ -310,7 +318,8 @@ function animate_opf(
                                                      time_label=time_label,
                                                      ylims=ylims,
                                                      symlog=symlog,
-                                                     palette=palette)
+                                                     palette=palette,
+                                                     alpha=alpha)
         else
             n_dim == n_buses || throw(ArgumentError(
                 "Variable '$var_name' has dimension $n_dim, expected $n_branches (branches), $n_buspairs (bus pairs) or $n_buses (buses)"))
@@ -322,7 +331,8 @@ function animate_opf(
                                               time_label=time_label,
                                               ylims=ylims,
                                               symlog=symlog,
-                                              palette=palette)
+                                              palette=palette,
+                                              alpha=alpha)
         end
 
         # Add a figure-level title above the time-step label (which already lives at
