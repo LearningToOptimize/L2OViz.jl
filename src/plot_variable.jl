@@ -1,7 +1,7 @@
 """
     plot_variable(x, var_data::Matrix...; solver_names=nothing, xlabel=nothing,
                   var_name="", vis_threshold::Int=20, significance_fn=default_significance,
-                  symlog::Bool=false, palette=nothing) -> Figure
+                  symlog::Bool=false, palette=nothing, alpha=1.0) -> Figure
 
 Visualize a vector variable across multiple problem instances.
 
@@ -34,7 +34,7 @@ function plot_variable(x, var_data::Matrix...;
                        solver_names=nothing, xlabel=nothing,
                        var_name="", vis_threshold::Int=20,
                        significance_fn=default_significance,
-                       symlog::Bool=false, palette=nothing)
+                       symlog::Bool=false, palette=nothing, alpha::Real=1.0)
     length(var_data) >= 1 || throw(ArgumentError("At least one data matrix must be provided"))
     n_entries = validate_var_data_dims(var_data)
     x_vecs = resolve_x_vecs(x, var_data)
@@ -55,7 +55,7 @@ function plot_variable(x, var_data::Matrix...;
 
     axes, legend_handles = draw_vector_panels!(
         fig, var_data, x_vecs, x_label, var_name,
-        selected_indices, solver_colors, n_cols; yscale=yscale)
+        selected_indices, solver_colors, n_cols; yscale=yscale, alpha=alpha)
 
     linkxaxes!(axes...)
     linkyaxes!(axes...)

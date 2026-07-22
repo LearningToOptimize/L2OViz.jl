@@ -213,7 +213,7 @@ end
 # `plot_y` for each 3D solver array.
 function draw_vector_panels!(parent, var_data, x_vecs, x_label, var_name,
                              selected_indices, solver_colors, n_cols; frame_obs=nothing,
-                             yscale=identity)
+                             yscale=identity, alpha=1.0)
     legend_handles = []
     axes = Axis[]
     for (k, data_idx) in enumerate(selected_indices)
@@ -224,7 +224,7 @@ function draw_vector_panels!(parent, var_data, x_vecs, x_label, var_name,
         push!(axes, ax)
         for (i, d) in enumerate(var_data)
             p = scatter!(ax, x_vecs[i], plot_y(d, data_idx, frame_obs);
-                         color=solver_colors[i])
+                         color=solver_colors[i], alpha=alpha)
             k == 1 && push!(legend_handles, p)
         end
     end
@@ -236,7 +236,7 @@ end
 # back to its row in each solver's data array.
 function draw_matrix_panels!(gl, var_data, x_vecs, x_label, var_name,
                              I_plot, J_plot, selected_indices, grid_pos,
-                             solver_colors; frame_obs=nothing, yscale=identity)
+                             solver_colors; frame_obs=nothing, yscale=identity, alpha=1.0)
     legend_handles = []
     axes = Axis[]
     for k in eachindex(I_plot)
@@ -248,7 +248,7 @@ function draw_matrix_panels!(gl, var_data, x_vecs, x_label, var_name,
         coo_row = selected_indices[k]
         for (i, d) in enumerate(var_data)
             p = scatter!(ax, x_vecs[i], plot_y(d, coo_row, frame_obs);
-                         color=solver_colors[i])
+                         color=solver_colors[i], alpha=alpha)
             k == 1 && push!(legend_handles, p)
         end
     end

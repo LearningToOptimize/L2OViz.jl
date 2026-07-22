@@ -6,7 +6,7 @@
                             vis_threshold::Int=20,
                             significance_fn=default_significance,
                             ylims=nothing, symlog::Bool=false,
-                            time_label="t", palette=nothing)
+                            time_label="t", palette=nothing, alpha=1.0)
         -> (fig::Figure, frame_obs::Observable{Int})
 
 Build an animation for a graph variable across a sequence of time-stepped frames.
@@ -67,7 +67,7 @@ function animate_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
                                  significance_fn=default_significance,
                                  ylims::Union{Nothing,Tuple{Real,Real}}=nothing,
                                  symlog::Bool=false,
-                                 time_label::String="t", palette=nothing)
+                                 time_label::String="t", palette=nothing, alpha::Real=1.0)
     if !isnothing(ylims)
         ylims[1] < ylims[2] || throw(ArgumentError(
             "ylims must satisfy ylims[1] < ylims[2], got $ylims"))
@@ -110,7 +110,7 @@ function animate_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
     axes, legend_handles = draw_matrix_panels!(
         gl, var_data, x_vecs, x_label, var_name,
         I_plot, J_plot, selected_indices, grid_pos, solver_colors; frame_obs=frame_obs,
-        yscale=yscale)
+        yscale=yscale, alpha=alpha)
 
     linkxaxes!(axes...)
     linkyaxes!(axes...)

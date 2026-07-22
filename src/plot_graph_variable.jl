@@ -3,7 +3,7 @@
                          solver_names=nothing,
                          xlabel=nothing, var_name="",
                          vis_threshold::Int=20, significance_fn=default_significance,
-                         symlog::Bool=false, palette=nothing) -> Figure
+                         symlog::Bool=false, palette=nothing, alpha=1.0) -> Figure
 
 Visualize a graph variable across multiple problem instances.
 The variable is assumed to have the same graph topology across all the problem instances.
@@ -42,7 +42,7 @@ function plot_graph_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matrix
                               xlabel=nothing, var_name="",
                               vis_threshold::Int=20,
                               significance_fn=default_significance,
-                              symlog::Bool=false, palette=nothing)
+                              symlog::Bool=false, palette=nothing, alpha::Real=1.0)
     length(var_data) >= 1 || throw(ArgumentError("At least one data matrix must be provided"))
     n_e = validate_var_data_dims(var_data)
     length(I) == n_e || throw(DimensionMismatch("Length of I must equal number of rows in var_data"))
@@ -67,7 +67,7 @@ function plot_graph_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Matrix
 
     axes, legend_handles = draw_matrix_panels!(
         gl, var_data, x_vecs, x_label, var_name,
-        I_plot, J_plot, selected_indices, grid_pos, solver_colors; yscale=yscale)
+        I_plot, J_plot, selected_indices, grid_pos, solver_colors; yscale=yscale, alpha=alpha)
 
     linkxaxes!(axes...)
     linkyaxes!(axes...)
