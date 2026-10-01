@@ -56,6 +56,11 @@ The animation can be exported as a GIF.
 Each entry of a variable is summarized across instances by four statistics: the mean of the absolute values, the geometric mean of the absolute values, the mean, and the median.
 The figure has one row per variable and one column per statistic.
 
+### Sparse variables
+`plot_sparse_variable` visualizes every **nonzero** entry (thresholded by `atol`) of a vector variable across all instances in a single scatter plot: the x-axis is the instance parameter `x`, the y-axis is the entry index, and points are colored by value.
+With multiple solvers, one panel per solver is placed side-by-side, sharing the y-axis and a single color bar.
+Set `symlog=true` for a symmetric log color scale (a log scale that also supports negative values).
+
 
 ### Thresholding
 When the dimension of the variable to visualize is too high, `vis_threshold` limits the number of entries that are visualized.
