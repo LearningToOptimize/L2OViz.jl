@@ -8,17 +8,23 @@ entry_values(d::AbstractArray{<:Any, 3}, k::Int) = vec(@view d[k, :, :])
 plot_y(d::AbstractMatrix, k::Int, ::Any) = d[k, :]
 plot_y(d::AbstractArray{<:Any, 3}, k::Int, frame_obs::Observable) = @lift d[k, :, $frame_obs]
 
-# Resolve `solver_names`: default to placeholder names if not supplied, otherwise validate length.
-resolve_solver_names(::Nothing, n_solvers::Int) = ["Solver $i" for i in 1:n_solvers]
-function resolve_solver_names(solver_names, n_solvers::Int)
-    if isa(solver_names, AbstractVector{<:AbstractString})
-        length(solver_names) == n_solvers || throw(ArgumentError(
-            "solver_names must have length $n_solvers, got $(length(solver_names))"))
-        return collect(solver_names)
+# Resolve a set of names: default to `"$prefix $i"` placeholders if not supplied, otherwise
+# validate length. `kind` names the keyword argument in error messages (e.g. "solver_names").
+resolve_names(::Nothing, n::Int, ::AbstractString, prefix::AbstractString) =
+    ["$prefix $i" for i in 1:n]
+function resolve_names(names, n::Int, kind::AbstractString, ::AbstractString)
+    if isa(names, AbstractVector{<:AbstractString})
+        length(names) == n || throw(ArgumentError(
+            "$kind must have length $n, got $(length(names))"))
+        return collect(names)
     else
-        throw(ArgumentError("solver_names must be a Vector of Strings or nothing"))
+        throw(ArgumentError("$kind must be a Vector of Strings or nothing"))
     end
 end
+
+# Resolve `solver_names`: default to placeholder names if not supplied, otherwise validate length.
+resolve_solver_names(solver_names, n_solvers::Int) =
+    resolve_names(solver_names, n_solvers, "solver_names", "Solver")
 
 function validate_var_data_dims(var_data)
     # All matrices must have the same number of rows (dimension of the variable)
@@ -154,25 +160,26 @@ end
 # linear region from below so that a single near-zero value cannot stretch the axis out.
 const SYMLOG_MAX_DECADES = 8
 
-# Half-width of the linear region of a symlog y-axis, derived from the data: the smallest
-# nonzero magnitude present, floored at `SYMLOG_MAX_DECADES` below the largest magnitude.
-# Returns `nothing` when every value is zero, where a symlog axis is not meaningful.
-function symlog_linthresh(var_data, entry_indices)
+# Half-width of the linear region of a symlog axis, derived from a flat iterable of values:
+# the smallest nonzero magnitude present, floored at `SYMLOG_MAX_DECADES` below the largest
+# magnitude. Returns `nothing` when every value is zero, where a symlog axis is not meaningful.
+function symlog_linthresh_from_values(values)
     max_abs = 0.0
     min_nonzero_abs = Inf
-    for k in entry_indices
-        for d in var_data
-            for value in entry_values(d, k)
-                magnitude = abs(value)
-                magnitude == 0 && continue
-                max_abs = max(max_abs, magnitude)
-                min_nonzero_abs = min(min_nonzero_abs, magnitude)
-            end
-        end
+    for value in values
+        magnitude = abs(value)
+        magnitude == 0 && continue
+        max_abs = max(max_abs, magnitude)
+        min_nonzero_abs = min(min_nonzero_abs, magnitude)
     end
     max_abs > 0 || return nothing
     return clamp(min_nonzero_abs, max_abs / 10.0^SYMLOG_MAX_DECADES, max_abs)
 end
+
+# Symlog linear-threshold over the given entries of every solver's data (and all frames for
+# 3D data).
+symlog_linthresh(var_data, entry_indices) = symlog_linthresh_from_values(
+    (value for k in entry_indices for d in var_data for value in entry_values(d, k)))
 
 function resolve_yscale(symlog::Bool, var_data, entry_indices)
     symlog || return identity
@@ -183,6 +190,49 @@ function resolve_yscale(symlog::Bool, var_data, entry_indices)
     end
     return Makie.Symlog10(linthresh)
 end
+
+# Resolve a symlog axis transform from a flat iterable of values, falling back to `identity`
+# when a symlog scale is not meaningful (every value is zero). Used for the histogram x-axis.
+function resolve_symlog_transform(symlog::Bool, values)
+    symlog || return identity
+    linthresh = symlog_linthresh_from_values(values)
+    if isnothing(linthresh)
+        @warn "symlog=true, but every value is zero; falling back to a linear axis."
+        return identity
+    end
+    return Makie.Symlog10(linthresh)
+end
+
+# Histogram bin edges (length `n_bins + 1`) spanning the extrema of `values`. For a nonlinear
+# `transform` the edges are evenly spaced in transformed space and inverted back to data
+# space, so that an axis using `xscale=transform` renders bars at even visual width. A
+# degenerate range (all values equal) is padded symmetrically so the edges stay increasing.
+function scale_histogram_bins(values, n_bins::Int, transform)
+    lo, hi = extrema(values)
+    tlo, thi = transform(lo), transform(hi)
+    if !(thi > tlo)
+        pad = tlo == 0 ? 0.5 : 0.5 * abs(tlo)
+        tlo -= pad
+        thi += pad
+    end
+    inverse = Makie.inverse_transform(transform)
+    edges = [inverse(tlo + (thi - tlo) * i / n_bins) for i in 0:n_bins]
+    edges[end] = max(edges[end], nextfloat(hi))
+    return edges
+end
+
+# Resolve the `symlog` argument of `plot_scale_histograms` into one flag per variable. A single
+# `Bool` applies to every variable; a `Vector{Bool}` selects the scale per variable.
+resolve_symlog_flags(symlog::Bool, n_vars::Int) = fill(symlog, n_vars)
+function resolve_symlog_flags(symlog::AbstractVector, n_vars::Int)
+    all(x -> x isa Bool, symlog) ||
+        throw(ArgumentError("symlog must be a Bool or a Vector of Bools"))
+    length(symlog) == n_vars || throw(ArgumentError(
+        "symlog must have length $n_vars (one per variable), got $(length(symlog))"))
+    return collect(Bool, symlog)
+end
+resolve_symlog_flags(symlog, ::Int) =
+    throw(ArgumentError("symlog must be a Bool or a Vector of Bools, got $(typeof(symlog))"))
 
 # Panel titles. Vector variant produces "[k]" or "var_name[k]"; graph variant produces
 # "[i,j]" or "var_name[i,j]".
