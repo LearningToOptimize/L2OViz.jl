@@ -1,5 +1,5 @@
 """
-    plot_variable(x, var_data::Matrix...; solver_names=nothing, xlabel=nothing,
+    plot_variable(x, var_data::AbstractMatrix...; solver_names=nothing, xlabel=nothing,
                   var_name="", vis_threshold::Int=20, significance_fn=default_significance,
                   symlog::Bool=false, palette=nothing, alpha=1.0) -> Figure
 
@@ -30,7 +30,7 @@ are more solvers than colors, or a `Symbol` naming a Makie/ColorSchemes palette 
 `:viridis`): categorical palettes use their discrete colors, and continuous colormaps are sampled
 into as many evenly spaced colors as there are solvers.
 """
-function plot_variable(x, var_data::Matrix...;
+function plot_variable(x, var_data::AbstractMatrix...;
                        solver_names=nothing, xlabel=nothing,
                        var_name="", vis_threshold::Int=20,
                        significance_fn=default_significance,

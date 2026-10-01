@@ -56,7 +56,7 @@ function sparse_colorbar_ticks(colorscale::Makie.Symlog10, colorrange)
 end
 
 """
-    plot_sparse_variable(x, var_data::Matrix...; solver_names=nothing, xlabel=nothing,
+    plot_sparse_variable(x, var_data::AbstractMatrix...; solver_names=nothing, xlabel=nothing,
                          var_name="", symlog::Bool=false, atol::Real=1e-6, colormap=:viridis,
                          markersize::Real=6, alpha=1.0) -> Figure
 
@@ -86,7 +86,7 @@ for magnitudes above the smallest displayed magnitude while still supporting neg
 
 `colormap` is any colormap Makie accepts (e.g. `:viridis`, `:balance`).
 """
-function plot_sparse_variable(x, var_data::Matrix...;
+function plot_sparse_variable(x, var_data::AbstractMatrix...;
                               solver_names=nothing, xlabel=nothing, var_name="",
                               symlog::Bool=false, atol::Real=1e-6, colormap=:viridis,
                               markersize::Real=6, alpha::Real=1.0)
