@@ -52,6 +52,17 @@ function sparse_colorbar_ticks(colorscale::Makie.Symlog10, colorrange)
         insert!(tick_values, zero_position, 0.0)
         insert!(tick_labels, zero_position, "0")
     end
+    # No decade falls within the range (e.g. same-sign values within one decade), so label
+    # the range ends instead.
+    if all(iszero, tick_values)
+        for endpoint in (lo, hi)
+            endpoint == 0 && continue
+            position = searchsortedfirst(tick_values, endpoint)
+            insert!(tick_values, position, endpoint)
+            endpoint_label = replace(string(round(endpoint; sigdigits=3)), "-" => "−")
+            insert!(tick_labels, position, endpoint_label)
+        end
+    end
     return (tick_values, tick_labels)
 end
 
