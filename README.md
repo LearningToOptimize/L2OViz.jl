@@ -37,17 +37,24 @@ Currently, directed graph variables are not supported.
 
 
 ## Visualization
+
+### Individual entries
 The values of each variable entry across all the problem instances are visualized in a scatter point subplot.
 `plot_variable` simply places the subplots side-by-side.
 `plot_graph_variable` arranges the subplots into a grid layout, where the subplot at coordinate `(i, j)` visualizes the `(i, j)` entry of the variable as specified in `(I, J)`.
 
-The data of Solver A and Solver B do not have to be for the same problem instances.
-In this case, different `x` should be provided.
+The data of different solvers do not have to be for the same problem instances; in this case, different `x` should be provided.
 
-### Animation
+#### Animation
 `animate_variable` and `animate_graph_variable` are animated counterparts to `plot_variable` and `plot_graph_variable`.
 Each frame uses the same subplot layout as its non-animated counterpart.
 The animation can be exported as a GIF.
+
+### Scale histograms
+`plot_scale_histograms` visualizes statistics of the scales of the entries of one or more variables, rather than plotting individual entries.
+
+Each entry of a variable is summarized across instances by four statistics: the mean of the absolute values, the geometric mean of the absolute values, the mean, and the median.
+The figure has one row per variable and one column per statistic.
 
 
 ### Thresholding
@@ -63,8 +70,8 @@ By default, `significance_fn` chooses the solutions with the maximum absolute su
 This can be used to, for example, visualize the variables where a solver produces highest error compared to a reference (by calling **the plotting functions on the error** instead of the solutions).
 
 
-## Example: Optimal Power Flow
-`exp/viz_opf.jl` defines `viz_opf` and `animate_opf`, utility functions for visualizing OPF solution data using system topology from PGLib.jl and PowerModels.jl.
+## Utility: Optimal Power Flow
+`exp/viz_opf.jl` defines `viz_opf`, `animate_opf` and `plot_scale_histograms_opf`, utility functions for visualizing OPF solution data using system topology from PGLib.jl and PowerModels.jl.
 
 `viz_opf` supports two calling modes:
 
@@ -87,6 +94,8 @@ When `flat=true`, all variables use `plot_variable`/`animate_variable`.
 
 Output images are named `{system_name}_{variable}.png`/`{system_name}_{variable}.gif`.
 
+`plot_scale_histograms_opf` applies `plot_scale_histograms` to the same two calling modes, drawing every variable in a single figure (one row per variable) named `{system_name}_scale_histograms.png`.
+
 ### Example `viz_opf` outputs with synthetic data
 <img src="exp/14_ieee_v.png" height="400">
 <img src="exp/14_ieee_pf.png" height="600">
@@ -94,3 +103,6 @@ Output images are named `{system_name}_{variable}.png`/`{system_name}_{variable}
 ### Example `animate_opf` outputs with synthetic data
 <img src="exp/14_ieee_v.gif" height="400">
 <img src="exp/14_ieee_pf.gif" height="600">
+
+### Example `plot_scale_histograms_opf` output with synthetic data
+<img src="exp/14_ieee_scale_histograms.png" height="400">
