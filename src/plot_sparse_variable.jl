@@ -21,6 +21,15 @@ function sparse_color_range(all_values)
     return (lo, hi)
 end
 
+# Integer y-ticks for entry indices 1:n_entries, at a 1/2/5 × 10^k step giving at most
+# `max_ticks` ticks.
+function entry_index_ticks(n_entries::Int; max_ticks::Int=10)
+    magnitude = 10^max(0, floor(Int, log10(n_entries / max_ticks)))
+    step = first(m * magnitude for m in (1, 2, 5, 10) if n_entries / (m * magnitude) <= max_ticks)
+    first_tick = step == 1 ? 1 : step
+    return first_tick:step:n_entries
+end
+
 # Color bar ticks. Makie's automatic ticks leave the negative half of a symlog bar unlabeled,
 # so for symlog we place ticks at zero and at ±10^k for every decade from the linear threshold
 # up to the largest magnitude within `colorrange`.
@@ -106,7 +115,7 @@ function plot_sparse_variable(x, var_data::Matrix...;
     scatter_plot = nothing
     for (i, (xs, entry_indices, values)) in enumerate(solver_points)
         ax = Axis(fig[1, i]; title=solver_names[i], xlabel=x_label,
-                  ylabel=(i == 1 ? y_label : ""))
+                  ylabel=(i == 1 ? y_label : ""), yticks=entry_index_ticks(n_entries))
         i > 1 && hideydecorations!(ax; grid=false, ticks=false)
         push!(axes, ax)
         scatter_plot = scatter!(ax, xs, entry_indices; color=values, colormap=colormap,
