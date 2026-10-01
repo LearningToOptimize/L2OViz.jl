@@ -333,3 +333,65 @@ function plot_scale_histograms_opf(
 )
     return plot_scale_histograms_opf(system_name, variables, var_data...; kwargs...)
 end
+
+"""
+    plot_sparse_variable_opf(system_name::String, variables, x, var_data...; kwargs...)
+    plot_sparse_variable_opf(network::Dict, variables, x, var_data...; kwargs...)
+
+Plot the nonzero entries of OPF solution variables with [`plot_sparse_variable`](@ref) and save
+one image per variable to `output_dir`.
+
+The sparsity plots do not depend on the network topology, so no network data is loaded: the
+first argument only names the system, either directly or through the network's `"name"` field
+(`"system"` if absent).
+
+`variables`, `x` and `var_data` follow the two calling modes of [`viz_opf`](@ref): a `String`
+with one `(n_dim × n_instances)` `Matrix` per solver, or a `Vector{String}` with one `Dict`
+per solver mapping variable names to matrices.
+
+**Keyword arguments**: `system_name` (`Dict` method only; overrides the network's name),
+`solver_names`, `output_dir` (default `"."`), `xlabel`, `symlog` (default `false`, draws the
+color bar on a symmetric log scale), `atol` (default `1e-6`), `colormap` (default `:viridis`),
+`markersize` (default `6`), `alpha` (default `1.0`), all forwarded to
+[`plot_sparse_variable`](@ref).
+Output images are named `{system_name}_{variable}_sparse.png`.
+"""
+function plot_sparse_variable_opf(
+    system_name::String,
+    variables::Union{String, Vector{String}},
+    x,
+    var_data...;
+    solver_names=nothing,
+    output_dir::String=".",
+    xlabel=nothing,
+    symlog::Bool=false,
+    atol::Real=1e-6,
+    colormap=:viridis,
+    markersize::Real=6,
+    alpha::Real=1.0
+)
+    var_data_pairs = _var_data_pairs(variables, var_data, (2,))
+
+    mkpath(output_dir)
+    for (var_name, solvers_data) in var_data_pairs
+        fig = plot_sparse_variable(x, solvers_data...; solver_names, var_name, xlabel, symlog,
+                                   atol, colormap, markersize, alpha)
+
+        _add_figure_title!(fig, 0, "$(system_name): $(var_name)")
+
+        output_path = joinpath(output_dir, "$(system_name)_$(var_name)_sparse.png")
+        save(output_path, fig)
+        println("Saved $output_path")
+    end
+end
+
+function plot_sparse_variable_opf(
+    network::Dict,
+    variables::Union{String, Vector{String}},
+    x,
+    var_data...;
+    system_name::String=get(network, "name", "system"),
+    kwargs...
+)
+    return plot_sparse_variable_opf(system_name, variables, x, var_data...; kwargs...)
+end

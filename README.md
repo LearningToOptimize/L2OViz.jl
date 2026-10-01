@@ -76,7 +76,7 @@ This can be used to, for example, visualize the variables where a solver produce
 
 
 ## Utility: Optimal Power Flow
-`exp/viz_opf.jl` defines `viz_opf`, `animate_opf` and `plot_scale_histograms_opf`, utility functions for visualizing OPF solution data using system topology from PGLib.jl and PowerModels.jl.
+`exp/viz_opf.jl` defines `viz_opf`, `animate_opf`, `plot_scale_histograms_opf` and `plot_sparse_variable_opf`, utility functions for visualizing OPF solution data using system topology from PGLib.jl and PowerModels.jl.
 
 `viz_opf` supports two calling modes:
 
@@ -101,6 +101,8 @@ Output images are named `{system_name}_{variable}.png`/`{system_name}_{variable}
 
 `plot_scale_histograms_opf` applies `plot_scale_histograms` to the same two calling modes, drawing every variable in a single figure (one row per variable) named `{system_name}_scale_histograms.png`.
 
+`plot_sparse_variable_opf` applies `plot_sparse_variable` to the same two calling modes, saving one image per variable named `{system_name}_{variable}_sparse.png`.
+
 ### Example `viz_opf` outputs with synthetic data
 <img src="exp/14_ieee_v.png" height="400">
 <img src="exp/14_ieee_pf.png" height="600">
@@ -111,3 +113,6 @@ Output images are named `{system_name}_{variable}.png`/`{system_name}_{variable}
 
 ### Example `plot_scale_histograms_opf` output with synthetic data
 <img src="exp/14_ieee_scale_histograms.png" height="400">
+
+### Example `plot_sparse_variable_opf` outputs with synthetic data
+<img src="exp/14_ieee_v_sparse.png" height="500">
