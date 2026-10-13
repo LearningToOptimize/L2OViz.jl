@@ -6,7 +6,8 @@
                             vis_threshold::Int=20,
                             significance_fn=default_significance,
                             ylims=nothing, symlog::Bool=false,
-                            time_label="t", palette=nothing, alpha=1.0)
+                            time_label="t", palette=nothing, alpha=1.0, bipartite=false,
+                            scored_on=:rows)
         -> (fig::Figure, frame_obs::Observable{Int})
 
 Build an animation for a graph variable across a sequence of time-stepped frames.
@@ -35,6 +36,10 @@ Thresholding (`vis_threshold`, `significance_fn`) follows the same induced-subgr
 so that the set of displayed entries — and therefore the grid layout — stays stable for the
 whole animation. If multiple edges between `(i, j)` are selected, only the highest-scoring one is
 kept.
+
+`bipartite` treats `I` and `J` as subsets of the two partitions of a bipartite graph.
+Thresholding applies only to the rows/columns as specified by `scored_on`, like in
+[`plot_graph_variable`](@ref).
 
 The y-axis range is held fixed for every frame. By default the limits are computed once from
 the full min/max of the displayed data across all selected entries, solvers, instances and
@@ -67,7 +72,8 @@ function animate_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
                                  significance_fn=default_significance,
                                  ylims::Union{Nothing,Tuple{Real,Real}}=nothing,
                                  symlog::Bool=false,
-                                 time_label::String="t", palette=nothing, alpha::Real=1.0)
+                                 time_label::String="t", palette=nothing, alpha::Real=1.0,
+                                 bipartite::Bool=false, scored_on::Symbol=:rows)
     if !isnothing(ylims)
         ylims[1] < ylims[2] || throw(ArgumentError(
             "ylims must satisfy ylims[1] < ylims[2], got $ylims"))
@@ -85,14 +91,16 @@ function animate_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
 
     # For each entry, combine values across all solvers, instances and frames for significance score
     entry_scores = compute_entry_scores(var_data, n_e, significance_fn)
-    I_plot, J_plot, selected_indices = select_variable_edges(entry_scores, I, J, vis_threshold)
+    I_plot, J_plot, selected_indices = select_variable_edges(entry_scores, I, J, vis_threshold;
+                                                               bipartite=bipartite,
+                                                               scored_on=scored_on)
 
-    n, grid_pos = matrix_grid_layout(I_plot, J_plot)
+    n_rows, n_cols, grid_pos = matrix_grid_layout(I_plot, J_plot; bipartite=bipartite)
 
     solver_colors = solver_palette(n_solvers, palette)
 
     # Extra vertical space at the top accommodates the time-step label.
-    fig = Figure(size=(320 * n, 260 * n + 120))
+    fig = Figure(size=(320 * n_cols, 260 * n_rows + 120))
 
     # Observable that drives the animation. Callers mutate this to advance frames.
     frame_obs = Observable(1)
@@ -103,7 +111,7 @@ function animate_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
           fontsize=20, tellwidth=false, halign=:center)
 
     # Subplot grid lives in its own GridLayout so the matrix coordinates map cleanly.
-    gl = fig[1, 1] = GridLayout(n, n)
+    gl = fig[1, 1] = GridLayout(n_rows, n_cols)
 
     yscale = resolve_yscale(symlog, var_data, selected_indices)
 

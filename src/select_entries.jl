@@ -52,15 +52,39 @@ function dedup_edges_by_scores(I_plot::Vector{Int}, J_plot::Vector{Int},
     return I_plot[kept_indices], J_plot[kept_indices], selected_indices[kept_indices]
 end
 
+# Select the `vis_threshold` vertices in `V` with the highest scores, where each vertex is
+# scored by the maximum score of its incident edges (for each vector `endpoints` in
+# `endpoint_vectors`, `endpoints[k]` is an endpoint of the edge with score `entry_scores[k]`).
+function top_scoring_vertices(V::Vector{Int}, endpoint_vectors,
+                              entry_scores::Vector{<:Real}, vis_threshold::Int)
+    v_score = Dict{Int, Float64}()
+    for endpoints in endpoint_vectors, (v, s) in zip(endpoints, entry_scores)
+        v_score[v] = max(get(v_score, v, -Inf), s)
+    end
+    V_sorted = sort(V, by=v -> v_score[v], rev=true)
+    return Set(V_sorted[1:min(vis_threshold, end)])
+end
+
 """
-    select_variable_edges(entry_scores, I, J, vis_threshold)
+    select_variable_edges(entry_scores, I, J, vis_threshold; bipartite=false, scored_on=:rows)
         -> (I_plot, J_plot, selected_indices)
 
-Determine which entries of a symmetric matrix to display, with optional thresholding.
+Determine which edges of a graph, given by the vertex pairs `(I[k], J[k])`, to display, with
+optional thresholding.
 
-`I`, `J` should not contain both `(i, j)` and `(j, i)`. If number of unique rows/columns
-exceeds `vis_threshold`, select an induced subgraph on the `vis_threshold` highest-scoring
-vertices.
+If `bipartite=false`, `I` and `J` are the source and destination vertices of the edges, both
+subsets of one shared vertex set. If the number of vertices with at least one edge exceeds
+`vis_threshold`, select an induced subgraph on the `vis_threshold` highest-scoring vertices,
+where each vertex is scored by the maximum score of its incident edges (as either source or
+destination). For an undirected graph, give each edge in only one orientation, `(i, j)` or
+`(j, i)`; otherwise both are displayed.
+
+If `bipartite=true`, `I` and `J` are subsets of the two separate partitions of a bipartite graph
+(e.g. the rows and columns of a rectangular matrix), so `I[k]` and `J[k]` index different vertex
+sets even when equal. Only the rows/columns given by `scored_on` (`:rows` for `I`, `:cols` for `J`)
+is thresholded: if it has more than `vis_threshold` vertices with at least one edge, the
+`vis_threshold` highest-scoring ones are kept, together with all of their edges. The other
+dimension is not limited.
 
 Returns the coordinates `I_plot`, `J_plot` of the entries to display, together with
 `selected_indices`, their positions in the original `I`/`J` (so `I_plot == I[selected_indices]`
@@ -75,13 +99,26 @@ each coordinate is kept and a warning is emitted per colliding coordinate (see
 """
 function select_variable_edges(entry_scores::Vector{<:Real},
                                 I::Vector{Int}, J::Vector{Int},
-                                vis_threshold::Int)
+                                vis_threshold::Int; bipartite::Bool=false,
+                                scored_on::Symbol=:rows)
     vis_threshold > 0 || throw(ArgumentError("vis_threshold must be positive"))
     all(I .>= 1) || throw(ArgumentError("All I indices must be >= 1"))
     all(J .>= 1) || throw(ArgumentError("All J indices must be >= 1"))
+    scored_on in (:rows, :cols) ||
+        throw(ArgumentError("scored_on must be :rows or :cols, got :$scored_on"))
 
-    # Set of vertices with at least one edge
-    V = union(unique(I), unique(J))
+    if bipartite
+        # Only the vertices on the scored partition/dimension are thresholded.
+        scored_endpoints = scored_on == :rows ? I : J
+        endpoint_vectors = (scored_endpoints,)
+        is_selected = (subgraph, k) -> scored_endpoints[k] ∈ subgraph
+    else
+        # Each vertex is scored over the edges incident to it as either endpoint.
+        endpoint_vectors = (I, J)
+        is_selected = (subgraph, k) -> I[k] ∈ subgraph && J[k] ∈ subgraph
+    end
+    # Set of thresholded vertices with at least one edge
+    V = union(unique.(endpoint_vectors)...)
 
     if length(V) <= vis_threshold
         # No need to filter. Collapse any repeated edges.
@@ -90,22 +127,10 @@ function select_variable_edges(entry_scores::Vector{<:Real},
         return I_plot, J_plot, selected_indices
     end
 
-    # Score each vertex by the maximum of the scores of its edges
-    v_score = Dict{Int, Float64}()
-    for k in 1:length(I)
-        s = entry_scores[k]
-        # max over all edges connected to k
-        v_score[I[k]] = max(get(v_score, I[k], -Inf), s)
-        v_score[J[k]] = max(get(v_score, J[k], -Inf), s)
-    end
-    V_sorted = sort(V, by=c -> v_score[c], rev=true)
-    V_subgraph = Set(V_sorted[1:min(vis_threshold, end)])
-    # Keep the edges whose endpoints are in the set of selected vertices.
+    subgraph = top_scoring_vertices(V, endpoint_vectors, entry_scores, vis_threshold)
+    # Keep the edges whose thresholded endpoints are in the set of selected vertices.
     # These indices point into the original I/J.
-    selected_indices = findall(
-        k -> I[k] ∈ V_subgraph && J[k] ∈ V_subgraph,
-        1:length(I)
-    )
+    selected_indices = findall(k -> is_selected(subgraph, k), 1:length(I))
     isempty(selected_indices) && throw(ArgumentError("No entries selected for display; consider increasing vis_threshold"))
     # Collapse any duplicate (i, j) coordinates among the selected entries.
     I_plot, J_plot, selected_indices = dedup_edges_by_scores(

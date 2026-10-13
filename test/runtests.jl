@@ -110,6 +110,63 @@ end  # select_variable_entries
         @test J_plot == [2]
     end
 
+    @testset "bipartite: rows and columns are distinct vertex sets" begin
+        # Dense 4×2 matrix. Without bipartite, row indices 1, 2 would collide with columns 1, 2.
+        I = [1, 2, 3, 4, 1, 2, 3, 4]
+        J = [1, 1, 1, 1, 2, 2, 2, 2]
+        scores = [1.0, 2.0, 9.0, 8.0, 1.0, 1.0, 1.0, 1.0]
+        # Only rows are scored: rows 3 and 4 score highest and keep all of their entries.
+        I_plot, J_plot, selected_indices = select_variable_edges(scores, I, J, 2; bipartite=true)
+        @test selected_indices == [3, 4, 7, 8]
+        @test I_plot == [3, 4, 3, 4]
+        @test J_plot == [1, 1, 2, 2]
+    end
+
+    @testset "bipartite: no filtering when the scored side is within threshold" begin
+        # 3 unique rows and 2 unique columns: the union has 5 > 3 vertices, but the rows number ≤ 3.
+        I = [1, 2, 3, 1]
+        J = [4, 4, 4, 5]
+        scores = [1.0, 2.0, 3.0, 4.0]
+        _, _, selected_indices = select_variable_edges(scores, I, J, 3; bipartite=true)
+        @test selected_indices == [1, 2, 3, 4]
+    end
+
+    @testset "bipartite: the unscored side is not limited" begin
+        # 1 row and 3 columns with threshold 1: the single row and all of its columns are kept.
+        I = [1, 1, 1]
+        J = [1, 2, 3]
+        scores = [1.0, 2.0, 3.0]
+        I_plot, J_plot, selected_indices = select_variable_edges(scores, I, J, 1; bipartite=true)
+        @test selected_indices == [1, 2, 3]
+        @test J_plot == [1, 2, 3]
+    end
+
+    @testset "bipartite: scored_on=:cols thresholds the columns" begin
+        # Dense 2×4 matrix; columns 3 and 4 score highest and keep all of their entries.
+        I = [1, 2, 1, 2, 1, 2, 1, 2]
+        J = [1, 1, 2, 2, 3, 3, 4, 4]
+        scores = [1.0, 1.0, 2.0, 1.0, 9.0, 1.0, 1.0, 8.0]
+        I_plot, J_plot, selected_indices =
+            select_variable_edges(scores, I, J, 2; bipartite=true, scored_on=:cols)
+        @test selected_indices == [5, 6, 7, 8]
+        @test I_plot == [1, 2, 1, 2]
+        @test J_plot == [3, 3, 4, 4]
+    end
+
+    @testset "bipartite: tied scores still select entries" begin
+        # Rows 1 and 2 tie; whichever is kept, all of its entries are displayed.
+        I = [1, 2, 1]
+        J = [1, 2, 3]
+        scores = [0.0, 5.0, 5.0]
+        _, _, selected_indices = select_variable_edges(scores, I, J, 1; bipartite=true)
+        @test selected_indices == [1, 3]
+    end
+
+    @testset "invalid scored_on throws" begin
+        @test_throws ArgumentError select_variable_edges([1.0], [1], [1], 1;
+                                                         bipartite=true, scored_on=:diag)
+    end
+
 end  # select_variable_edges
 
 @testset "dedup_edges_by_scores" begin
