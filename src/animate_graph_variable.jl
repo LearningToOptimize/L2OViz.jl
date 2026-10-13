@@ -6,7 +6,8 @@
                             vis_threshold::Int=20,
                             significance_fn=default_significance,
                             ylims=nothing, symlog::Bool=false,
-                            time_label="t", palette=nothing, alpha=1.0, bipartite=false)
+                            time_label="t", palette=nothing, alpha=1.0, bipartite=false,
+                            scored_on=:rows)
         -> (fig::Figure, frame_obs::Observable{Int})
 
 Build an animation for a graph variable across a sequence of time-stepped frames.
@@ -36,7 +37,9 @@ so that the set of displayed entries — and therefore the grid layout — stays
 whole animation. If multiple edges between `(i, j)` are selected, only the highest-scoring one is
 kept.
 
-`bipartite` treats `I` and `J` as distinct vertex sets, as in [`plot_graph_variable`](@ref).
+`bipartite` treats `I` and `J` as subsets of the two partitions of a bipartite graph.
+Thresholding applies only to the rows/columns as specified by `scored_on`, like in
+[`plot_graph_variable`](@ref).
 
 The y-axis range is held fixed for every frame. By default the limits are computed once from
 the full min/max of the displayed data across all selected entries, solvers, instances and
@@ -70,7 +73,7 @@ function animate_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
                                  ylims::Union{Nothing,Tuple{Real,Real}}=nothing,
                                  symlog::Bool=false,
                                  time_label::String="t", palette=nothing, alpha::Real=1.0,
-                                 bipartite::Bool=false)
+                                 bipartite::Bool=false, scored_on::Symbol=:rows)
     if !isnothing(ylims)
         ylims[1] < ylims[2] || throw(ArgumentError(
             "ylims must satisfy ylims[1] < ylims[2], got $ylims"))
@@ -89,7 +92,8 @@ function animate_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
     # For each entry, combine values across all solvers, instances and frames for significance score
     entry_scores = compute_entry_scores(var_data, n_e, significance_fn)
     I_plot, J_plot, selected_indices = select_variable_edges(entry_scores, I, J, vis_threshold;
-                                                               bipartite=bipartite)
+                                                               bipartite=bipartite,
+                                                               scored_on=scored_on)
 
     n_rows, n_cols, grid_pos = matrix_grid_layout(I_plot, J_plot; bipartite=bipartite)
 

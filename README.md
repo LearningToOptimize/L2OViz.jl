@@ -18,21 +18,21 @@ contains the values of a 5-dimensional variable for 3 instances of an optimizati
 `plot_variable` accepts a variable number of `Matrix` inputs, each corresponding to a solver.
 
 ### Graph variables
-Variables that correspond to the edges of a (multi-edge) undirected graph can be visualized in a grid layout of subplots which correspond to coordinates in the adjacency matrix.
+Variables that correspond to the edges of a (multi-edge) graph can be visualized in a grid layout of subplots which correspond to coordinates in the adjacency matrix.
 
 The graph topology is specified by `I` and `J`, ordered vectors containing endpoints of the edges.
-It is assumed that at most one of `(i,j)` and `(j,i)` is present, since the graph is undirected.
+By default, `I` and `J` contain the source and destination vertices of the edges, both subsets of one shared vertex set.
+For an undirected graph, each edge should be given in only one orientation, `(i,j)` or `(j,i)`; otherwise both are visualized.
+With `bipartite=true`, `I` and `J` are instead subsets of the two separate partitions of a bipartite graph (e.g. the rows and columns of a rectangular matrix).
 It is assumed that, across all the problem instances, the variable corresponds to the same graph topology.
 The values are still stored as a `Matrix`, where the number of rows is the number of edges of the graph (dimension of the variable), and the number of columns is `n_instances`.
 Each column contains the values of the variable in each problem instance.
 That is, all the variables are treated as vector variables in L2OViz.jl.
 
 In some cases the underlying graph is multi-edge.
-If there are multiple edges between a vertex pair, only the highest-scoring one is kept (see [Thresholding](#thresholding)).
+If there are multiple edges between a ordered vertex pair, only the highest-scoring one is kept (see [Thresholding](#thresholding)).
 
 `plot_graph_variable` accepts a variable number of `Matrix` inputs, each corresponding to a solver.
-
-Currently, directed graph variables are not supported.
 
 
 
@@ -42,6 +42,7 @@ Currently, directed graph variables are not supported.
 The values of each variable entry across all the problem instances are visualized in a scatter point subplot.
 `plot_variable` simply places the subplots side-by-side.
 `plot_graph_variable` arranges the subplots into a grid layout, where the subplot at coordinate `(i, j)` visualizes the `(i, j)` entry of the variable as specified in `(I, J)`.
+By default, `I` and `J` share one vertex set and the grid is square; with `bipartite=true`, rows and columns are laid out independently.
 
 The data of different solvers do not have to be for the same problem instances; in this case, different `x` should be provided.
 
@@ -68,6 +69,7 @@ When the dimension of the variable to visualize is too high, `vis_threshold` lim
 
 For graph variables, the `vis_threshold` vertices with the highest maximum scores over its edges are selected.
 Only the data on this induced subgraph are visualized.
+With `bipartite=true`, only one partition is thresholded: the `vis_threshold` highest-scoring rows (or columns, with `scored_on=:cols`) are selected together with all of their entries.
 
 If multiple edges between a vertex pair are selected, only the highest-scoring one is kept (with a warning).
 

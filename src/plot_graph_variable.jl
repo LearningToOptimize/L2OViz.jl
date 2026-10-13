@@ -3,11 +3,15 @@
                          solver_names=nothing,
                          xlabel=nothing, var_name="",
                          vis_threshold::Int=20, significance_fn=default_significance,
-                         symlog::Bool=false, palette=nothing, alpha=1.0, bipartite=false) -> Figure
+                         symlog::Bool=false, palette=nothing, alpha=1.0, bipartite=false,
+                         scored_on=:rows) -> Figure
 
 Visualize a graph variable across multiple problem instances.
 The variable is assumed to have the same graph topology across all the problem instances.
-The edges specified by `I` and `J` should not contain both (i, j) and (j, i).
+The edges are given by the vertex pairs `(I[k], J[k])`, and edge `k` is plotted in grid cell
+`(I[k], J[k])`. By default (`bipartite=false`), `I` and `J` are the source and destination
+vertices, both subsets of one shared vertex set, and the grid is square. For an undirected
+graph, give each edge in only one orientation, `(i, j)` or `(j, i)`; otherwise both are plotted.
 
 `x` is either:
 - A single `Vector`: the same x is used for every solver's data matrix. Length must equal the
@@ -29,10 +33,11 @@ score of coordinate `(I[k], J[k])`, and the score of each column/row is the max 
 that column/row. If multiple edges between `(i, j)` are selected, only the highest-scoring one is
 kept.
 
-Set `bipartite=true` when `I` and `J` index distinct vertex sets, e.g. the rows and columns of a
-rectangular matrix. Up to `vis_threshold` rows and `vis_threshold` columns are then selected
-independently, and the subplot grid (and figure) has one row per selected `i` and one column per
-selected `j` instead of being square.
+Set `bipartite=true` when `I` and `J` are subsets of the two separate partitions of a bipartite
+graph, e.g. the rows and columns of a rectangular matrix. Thresholding then applies only to rows/columns as specified by `scored_on` (`:rows`, the default, or `:cols`): up to `vis_threshold`
+highest-scoring rows (resp. columns) are kept with all of their entries, while the other dimension
+is not limited. The subplot grid (and figure) has one row per selected `i` and one
+column per selected `j` instead of being square.
 
 Set `symlog=true` to draw the y-axis on a symmetric log scale.
 
@@ -48,7 +53,7 @@ function plot_graph_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Abstra
                               vis_threshold::Int=20,
                               significance_fn=default_significance,
                               symlog::Bool=false, palette=nothing, alpha::Real=1.0,
-                              bipartite::Bool=false)
+                              bipartite::Bool=false, scored_on::Symbol=:rows)
     length(var_data) >= 1 || throw(ArgumentError("At least one data matrix must be provided"))
     n_e = validate_var_data_dims(var_data)
     length(I) == n_e || throw(DimensionMismatch("Length of I must equal number of rows in var_data"))
@@ -61,7 +66,8 @@ function plot_graph_variable(I::Vector{Int}, J::Vector{Int}, x, var_data::Abstra
     # For each entry, combine values across all solvers and all instances for significance score
     entry_scores = compute_entry_scores(var_data, n_e, significance_fn)
     I_plot, J_plot, selected_indices = select_variable_edges(entry_scores, I, J, vis_threshold;
-                                                               bipartite=bipartite)
+                                                               bipartite=bipartite,
+                                                               scored_on=scored_on)
 
     n_rows, n_cols, grid_pos = matrix_grid_layout(I_plot, J_plot; bipartite=bipartite)
 
