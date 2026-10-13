@@ -312,3 +312,69 @@ function draw_matrix_panels!(gl, var_data, x_vecs, x_label, var_name,
     end
     return axes, legend_handles
 end
+
+# Each solver's tuple of (real, imag) matrices must have matching sizes.
+function validate_polar_pair_dims(var_data)
+    for (i, (real_part, imag_part)) in enumerate(var_data)
+        size(real_part) == size(imag_part) || throw(DimensionMismatch(
+            "Real and imaginary parts of solver $(i) have different sizes: $(size(real_part)) vs $(size(imag_part))"))
+    end
+end
+
+# Convert Cartesian (real, imag) components to polar (radius, angle in radians).
+polar_coordinates(real_part::AbstractMatrix, imag_part::AbstractMatrix) =
+    hypot.(real_part, imag_part), atan.(imag_part, real_part)
+
+# Marker size range used to encode the instance parameter `x` in polar plots.
+const POLAR_MIN_MARKERSIZE = 4.0
+const POLAR_MAX_MARKERSIZE = 18.0
+
+# Map each solver's `x` linearly onto [POLAR_MIN_MARKERSIZE, POLAR_MAX_MARKERSIZE] using the
+# global x range across solvers, so sizes are comparable between solvers. Returns the per-solver
+# size vectors and `(x value, marker size)` pairs for the legend key.
+function x_marker_sizes(x_vecs; n_legend_entries::Int=3)
+    x_min = minimum(minimum, x_vecs)
+    x_max = maximum(maximum, x_vecs)
+    size_span = POLAR_MAX_MARKERSIZE - POLAR_MIN_MARKERSIZE
+    if x_max > x_min
+        to_size = v -> POLAR_MIN_MARKERSIZE + size_span * (v - x_min) / (x_max - x_min)
+        legend_x_values = range(x_min, x_max, length=n_legend_entries)
+    else
+        to_size = _ -> POLAR_MIN_MARKERSIZE + size_span / 2
+        legend_x_values = [x_min]
+    end
+    marker_sizes = [to_size.(x_vec) for x_vec in x_vecs]
+    return marker_sizes, [(v, to_size(v)) for v in legend_x_values]
+end
+
+# Legend below the polar panels: one group for solver colors and one for the marker-size key
+# of the instance parameter.
+function add_polar_legend!(legend_cell, solver_colors, solver_names, size_key, x_label)
+    solver_handles = [MarkerElement(marker=:circle, color=color,
+                                    markersize=(POLAR_MIN_MARKERSIZE + POLAR_MAX_MARKERSIZE) / 2)
+                      for color in solver_colors]
+    size_handles = [MarkerElement(marker=:circle, color=:gray50, markersize=marker_size)
+                    for (_, marker_size) in size_key]
+    size_labels = [string(round(x_value; sigdigits=3)) for (x_value, _) in size_key]
+    Legend(legend_cell, [solver_handles, size_handles], [solver_names, size_labels],
+           ["Solver", x_label]; orientation=:horizontal, tellwidth=false, tellheight=true)
+end
+
+# Draw one PolarAxis per panel into `parent` (a Figure or GridLayout). Panel `k` is placed at
+# `panel_cells[k]` and shows row `data_indices[k]` of every solver's data. Every panel uses the
+# radius range [0, rmax], since PolarAxis cannot be linked.
+function draw_polar_panels!(parent, radius_data, angle_data, marker_sizes, panel_cells,
+                            panel_titles, data_indices, solver_colors, rmax; alpha=1.0)
+    axes = PolarAxis[]
+    for (k, data_idx) in enumerate(data_indices)
+        grid_row, grid_col = panel_cells[k]
+        ax = PolarAxis(parent[grid_row, grid_col]; title=panel_titles[k])
+        push!(axes, ax)
+        for (i, (radius, angle)) in enumerate(zip(radius_data, angle_data))
+            scatter!(ax, angle[data_idx, :], radius[data_idx, :];
+                     markersize=marker_sizes[i], color=solver_colors[i], alpha=alpha)
+        end
+        rlims!(ax, 0, rmax)
+    end
+    return axes
+end
