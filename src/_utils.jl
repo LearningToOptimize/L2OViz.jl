@@ -248,13 +248,21 @@ function vector_grid_layout(n_plot::Int)
     return n_rows, n_cols
 end
 
-# Compute dimension of the plot grid and the mapping (i, j) → grid cell.
-function matrix_grid_layout(I_plot, J_plot)
+# Compute dimensions `(n_rows, n_cols)` of the plot grid and the mapping (i, j) → grid cell.
+# Rows and columns share one sorted vertex set (square grid) unless `bipartite`, in which case
+# rows are indexed by the unique `I_plot` and columns by the unique `J_plot`.
+function matrix_grid_layout(I_plot, J_plot; bipartite::Bool=false)
     # (i, j) should be sorted in the resulting grid
-    V_subgraph_sorted = sort(union(unique(I_plot), unique(J_plot)))
-    index_map = Dict(c => idx for (idx, c) in enumerate(V_subgraph_sorted))
-    n = length(V_subgraph_sorted)
-    return n, (i, j) -> (index_map[i], index_map[j])
+    if bipartite
+        row_vertices_sorted = sort(unique(I_plot))
+        col_vertices_sorted = sort(unique(J_plot))
+    else
+        row_vertices_sorted = col_vertices_sorted = sort(union(unique(I_plot), unique(J_plot)))
+    end
+    row_index_map = Dict(v => idx for (idx, v) in enumerate(row_vertices_sorted))
+    col_index_map = Dict(v => idx for (idx, v) in enumerate(col_vertices_sorted))
+    return length(row_vertices_sorted), length(col_vertices_sorted),
+           (i, j) -> (row_index_map[i], col_index_map[j])
 end
 
 # Draw the vector-variable panel grid into `parent` (a Figure or GridLayout). Returns

@@ -110,6 +110,27 @@ end  # select_variable_entries
         @test J_plot == [2]
     end
 
+    @testset "bipartite: rows and columns are distinct vertex sets" begin
+        # Dense 4×2 matrix. Without bipartite, row indices 1, 2 would collide with columns 1, 2.
+        I = [1, 2, 3, 4, 1, 2, 3, 4]
+        J = [1, 1, 1, 1, 2, 2, 2, 2]
+        scores = [1.0, 2.0, 9.0, 8.0, 1.0, 1.0, 1.0, 1.0]
+        # Columns (2 ≤ threshold) are all kept; rows 3 and 4 score highest.
+        I_plot, J_plot, selected_indices = select_variable_edges(scores, I, J, 2; bipartite=true)
+        @test selected_indices == [3, 4, 7, 8]
+        @test I_plot == [3, 4, 3, 4]
+        @test J_plot == [1, 1, 2, 2]
+    end
+
+    @testset "bipartite: no filtering when rows and columns are each within threshold" begin
+        # 3 unique rows and 2 unique columns: the union has 5 > 3 vertices, but each side has ≤ 3.
+        I = [1, 2, 3, 1]
+        J = [4, 4, 4, 5]
+        scores = [1.0, 2.0, 3.0, 4.0]
+        _, _, selected_indices = select_variable_edges(scores, I, J, 3; bipartite=true)
+        @test selected_indices == [1, 2, 3, 4]
+    end
+
 end  # select_variable_edges
 
 @testset "dedup_edges_by_scores" begin
