@@ -2,7 +2,7 @@
     plot_polar_variable(x, var_data::Tuple{AbstractMatrix, AbstractMatrix}...;
                         solver_names=nothing, xlabel=nothing, var_name="",
                         vis_threshold::Int=20, significance_fn=default_significance,
-                        palette=nothing, alpha=1.0) -> Figure
+                        symlog::Bool=false, palette=nothing, alpha=1.0) -> Figure
 
 Visualize a complex-valued vector variable across multiple problem instances in polar
 coordinates. Each entry is plotted on its own polar axis, with radius `|z|` and angle `arg(z)`.
@@ -28,13 +28,16 @@ Only the top-`vis_threshold` most significant entries are visualized. `significa
 (default: 1-norm) is applied to the radii of each entry across all solvers and instances to get
 the score of each entry. Entry labels always reflect the original indices.
 
+Set `symlog=true` to draw the radii on a symmetric log scale, which is logarithmic above the
+smallest nonzero displayed radius and keeps zero radii at the origin.
+
 `palette` sets the per-solver colors; see [`plot_variable`](@ref).
 """
 function plot_polar_variable(x, var_data::Tuple{AbstractMatrix, AbstractMatrix}...;
                              solver_names=nothing, xlabel=nothing,
                              var_name="", vis_threshold::Int=20,
                              significance_fn=default_significance,
-                             palette=nothing, alpha::Real=1.0)
+                             symlog::Bool=false, palette=nothing, alpha::Real=1.0)
     radius_data, angle_data, n_entries, x_vecs, solver_names, x_label =
         prepare_polar_inputs(x, var_data, solver_names, xlabel)
 
@@ -50,7 +53,7 @@ function plot_polar_variable(x, var_data::Tuple{AbstractMatrix, AbstractMatrix}.
     fig = Figure(size=(320 * n_cols, 320 * n_rows + 100))
     draw_polar_figure!(fig, fig, n_rows + 1, 1:n_cols, radius_data, angle_data, x_vecs,
                        panel_cells, panel_titles, selected_indices, solver_names, x_label,
-                       palette; alpha=alpha)
+                       palette; symlog=symlog, alpha=alpha)
     return fig
 end
 
@@ -59,7 +62,7 @@ end
                               var_data::Tuple{AbstractMatrix, AbstractMatrix}...;
                               solver_names=nothing, xlabel=nothing, var_name="",
                               vis_threshold::Int=20, significance_fn=default_significance,
-                              palette=nothing, alpha=1.0, bipartite=false,
+                              symlog::Bool=false, palette=nothing, alpha=1.0, bipartite=false,
                               scored_on=:rows) -> Figure
 
 Visualize a complex-valued graph variable across multiple problem instances in polar
@@ -67,8 +70,8 @@ coordinates. Edge `k`, given by the vertex pair `(I[k], J[k])`, is plotted on a 
 cell `(I[k], J[k])`, with radius `|z|` and angle `arg(z)`. The grid layout, `bipartite` and
 `scored_on` follow [`plot_graph_variable`](@ref).
 
-`x`, `var_data`, `solver_names`, `xlabel` and `palette` are as in [`plot_polar_variable`](@ref),
-with `n_e` (the number of edges) rows in each data matrix.
+`x`, `var_data`, `solver_names`, `xlabel`, `symlog` and `palette` are as in
+[`plot_polar_variable`](@ref), with `n_e` (the number of edges) rows in each data matrix.
 
 **Thresholding**: as in [`plot_graph_variable`](@ref), with `significance_fn` (default: 1-norm)
 applied to the radii of each entry across all solvers and instances.
@@ -78,7 +81,7 @@ function plot_polar_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
                                    solver_names=nothing, xlabel=nothing,
                                    var_name="", vis_threshold::Int=20,
                                    significance_fn=default_significance,
-                                   palette=nothing, alpha::Real=1.0,
+                                   symlog::Bool=false, palette=nothing, alpha::Real=1.0,
                                    bipartite::Bool=false, scored_on::Symbol=:rows)
     radius_data, angle_data, n_e, x_vecs, solver_names, x_label =
         prepare_polar_inputs(x, var_data, solver_names, xlabel)
@@ -99,7 +102,7 @@ function plot_polar_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
     gl = fig[1, 1] = GridLayout(n_rows, n_cols)
     draw_polar_figure!(fig, gl, 2, 1, radius_data, angle_data, x_vecs,
                        panel_cells, panel_titles, selected_indices, solver_names, x_label,
-                       palette; alpha=alpha)
+                       palette; symlog=symlog, alpha=alpha)
     return fig
 end
 
@@ -121,17 +124,23 @@ end
 # Draw the polar panels into `panel_parent` and the legend at `fig[legend_row, legend_cols]`.
 function draw_polar_figure!(fig, panel_parent, legend_row, legend_cols, radius_data, angle_data,
                             x_vecs, panel_cells, panel_titles, data_indices, solver_names,
-                            x_label, palette; alpha=1.0)
+                            x_label, palette; symlog::Bool=false, alpha=1.0)
     solver_colors = solver_palette(length(radius_data), palette)
     marker_sizes, size_key = x_marker_sizes(x_vecs)
 
-    # Shared radius range over the displayed entries with 5% headroom so markers at the largest
-    # radius are not clipped by the rim; fall back to 1 if every radius is zero.
-    _, max_radius = data_extrema(radius_data, data_indices)
-    rmax = max_radius > 0 ? 1.05 * max_radius : 1.0
+    displayed_radii = (radius for k in data_indices for d in radius_data
+                       for radius in entry_values(d, k))
+    rscale = resolve_symlog_transform(symlog, displayed_radii)
+
+    # Shared radius range over the displayed entries with 5% headroom (in transformed space) so
+    # markers at the largest radius are not clipped by the rim; fall back to 1 if every radius
+    # is zero.
+    max_radius = maximum(displayed_radii)
+    rmax_scaled = max_radius > 0 ? 1.05 * rscale(max_radius) : 1.0
 
     draw_polar_panels!(panel_parent, radius_data, angle_data, marker_sizes, panel_cells,
-                       panel_titles, data_indices, solver_colors, rmax; alpha=alpha)
+                       panel_titles, data_indices, solver_colors, rmax_scaled;
+                       rscale=rscale, alpha=alpha)
     add_polar_legend!(fig[legend_row, legend_cols], solver_colors, solver_names, size_key,
                       x_label)
 end

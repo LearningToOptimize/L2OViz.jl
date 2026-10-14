@@ -360,21 +360,70 @@ function add_polar_legend!(legend_cell, solver_colors, solver_names, size_key, x
            ["Solver", x_label]; orientation=:horizontal, tellwidth=false, tellheight=true)
 end
 
+# Radial ticks for a PolarAxis whose radii were transformed by `rscale`: ticks are placed in
+# transformed space but labeled with untransformed radii. Labels are always `RichText`, because
+# PolarAxis fixes the label type at construction and errors if the automatic formatter later
+# switches between `String` and `RichText` (e.g. scientific notation for large radii).
+function polar_rticks(rscale)
+    inverse = Makie.inverse_transform(rscale)
+    return function (rmin_scaled, rmax_scaled)
+        tick_radii, tick_labels = polar_tick_radii_and_labels(rscale, inverse(rmin_scaled),
+                                                              inverse(rmax_scaled))
+        return rscale.(tick_radii),
+               [label isa Makie.RichText ? label : rich(label) for label in tick_labels]
+    end
+end
+
+polar_tick_radii_and_labels(rscale, rmin, rmax) =
+    Makie.get_ticks(Makie.automatic, rscale, Makie.automatic, rmin, rmax)
+
+# Maximum number of ticks (besides 0) on a symlog radial axis.
+const POLAR_MAX_SYMLOG_TICKS = 4
+
+# Symlog radii: 0 plus log-spaced ticks between the linear threshold and `rmax`, thinned by a
+# uniform stride to at most POLAR_MAX_SYMLOG_TICKS. Decade ticks (10^k) are used when at least
+# two decades fit; otherwise 1-2-5 ticks fill the narrower range. Unlike Makie's `SymlogTicks`,
+# decades below 1 are allowed, so small radii also get log-spaced ticks.
+function polar_tick_radii_and_labels(rscale::Makie.Symlog10, rmin, rmax)
+    linthresh = rscale.upper
+    exponents = floor(Int, log10(linthresh)):floor(Int, log10(rmax))
+    decade_radii = filter(radius -> linthresh <= radius <= rmax, exp10.(exponents))
+    use_decades = length(decade_radii) >= 2
+    candidate_radii = use_decades ? decade_radii :
+        filter(radius -> linthresh <= radius <= rmax,
+               [mantissa * exp10(k) for k in exponents for mantissa in (1, 2, 5)])
+    length(candidate_radii) >= 2 || return Makie.get_ticks(Makie.automatic, identity,
+                                                           Makie.automatic, rmin, rmax)
+
+    # Keep the largest candidate and step down from it, so the outermost tick is closest to the rim.
+    stride = cld(length(candidate_radii), POLAR_MAX_SYMLOG_TICKS)
+    shown_radii = reverse(reverse(candidate_radii)[1:stride:end])
+    shown_labels = use_decades ?
+        [rich("10", superscript(string(round(Int, log10(radius))), offset=Vec2f(0.1, 0.0)))
+         for radius in shown_radii] :
+        Makie.get_ticklabels(Makie.automatic, shown_radii)
+    return [0.0; shown_radii], [rich("0"); [label isa Makie.RichText ? label : rich(label)
+                                            for label in shown_labels]]
+end
+
 # Draw one PolarAxis per panel into `parent` (a Figure or GridLayout). Panel `k` is placed at
-# `panel_cells[k]` and shows row `data_indices[k]` of every solver's data. Every panel uses the
-# radius range [0, rmax], since PolarAxis cannot be linked.
+# `panel_cells[k]` and shows row `data_indices[k]` of every solver's data. Radii are plotted after
+# applying `rscale` (PolarAxis has no radial scale attribute). Every panel uses the transformed
+# radius range [0, rmax_scaled], since PolarAxis cannot be linked.
 function draw_polar_panels!(parent, radius_data, angle_data, marker_sizes, panel_cells,
-                            panel_titles, data_indices, solver_colors, rmax; alpha=1.0)
+                            panel_titles, data_indices, solver_colors, rmax_scaled;
+                            rscale=identity, alpha=1.0)
     axes = PolarAxis[]
     for (k, data_idx) in enumerate(data_indices)
         grid_row, grid_col = panel_cells[k]
-        ax = PolarAxis(parent[grid_row, grid_col]; title=panel_titles[k])
+        ax = PolarAxis(parent[grid_row, grid_col]; title=panel_titles[k],
+                       rticks=polar_rticks(rscale), rtickangle=π / 2)
         push!(axes, ax)
         for (i, (radius, angle)) in enumerate(zip(radius_data, angle_data))
-            scatter!(ax, angle[data_idx, :], radius[data_idx, :];
+            scatter!(ax, angle[data_idx, :], rscale.(radius[data_idx, :]);
                      markersize=marker_sizes[i], color=solver_colors[i], alpha=alpha)
         end
-        rlims!(ax, 0, rmax)
+        rlims!(ax, 0, rmax_scaled)
     end
     return axes
 end
