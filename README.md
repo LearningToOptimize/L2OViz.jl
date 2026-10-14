@@ -51,6 +51,14 @@ The data of different solvers do not have to be for the same problem instances; 
 Each frame uses the same subplot layout as its non-animated counterpart.
 The animation can be exported as a GIF.
 
+### Polar plots
+`plot_polar_variable` and `plot_polar_graph_variable` visualize a complex-valued variable given by its real and imaginary parts (or simply two variables).
+Each solver's data is a tuple `(real_part, imag_part)` of matrices with the same size.
+Each entry is plotted on a polar axis with radius `|z|` and angle `arg(z)`; the instance parameter `x` is encoded as the marker size, and solvers are distinguished by color.
+`plot_polar_variable` places the subplots side-by-side and `plot_polar_graph_variable` uses the same grid layout as `plot_graph_variable`.
+Thresholding scores each entry by applying `significance_fn` to its radii.
+Set `symlog=true` to draw the radii on a symmetric log scale (logarithmic above the smallest nonzero radius, with zero at the origin).
+
 ### Scale histograms
 `plot_scale_histograms` visualizes statistics of the scales of the entries of one or more variables, rather than plotting individual entries.
 

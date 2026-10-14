@@ -176,23 +176,12 @@ function symlog_linthresh_from_values(values)
     return clamp(min_nonzero_abs, max_abs / 10.0^SYMLOG_MAX_DECADES, max_abs)
 end
 
-# Symlog linear-threshold over the given entries of every solver's data (and all frames for
-# 3D data).
-symlog_linthresh(var_data, entry_indices) = symlog_linthresh_from_values(
-    (value for k in entry_indices for d in var_data for value in entry_values(d, k)))
-
-function resolve_yscale(symlog::Bool, var_data, entry_indices)
-    symlog || return identity
-    linthresh = symlog_linthresh(var_data, entry_indices)
-    if isnothing(linthresh)
-        @warn "symlog=true, but every displayed value is zero; falling back to a linear y-axis."
-        return identity
-    end
-    return Makie.Symlog10(linthresh)
-end
+# Axis scale for the given entries of every solver's data (and all frames for 3D data).
+resolve_yscale(symlog::Bool, var_data, entry_indices) = resolve_symlog_transform(
+    symlog, (value for k in entry_indices for d in var_data for value in entry_values(d, k)))
 
 # Resolve a symlog axis transform from a flat iterable of values, falling back to `identity`
-# when a symlog scale is not meaningful (every value is zero). Used for the histogram x-axis.
+# when a symlog scale is not meaningful (every value is zero).
 function resolve_symlog_transform(symlog::Bool, values)
     symlog || return identity
     linthresh = symlog_linthresh_from_values(values)
@@ -248,6 +237,9 @@ function vector_grid_layout(n_plot::Int)
     return n_rows, n_cols
 end
 
+# Grid cell `(row, col)` of the `k`-th panel in a row-major vector layout with `n_cols` columns.
+vector_grid_cell(k::Int, n_cols::Int) = (div(k - 1, n_cols) + 1, mod(k - 1, n_cols) + 1)
+
 # Compute dimensions `(n_rows, n_cols)` of the plot grid and the mapping (i, j) → grid cell.
 # Rows and columns share one sorted vertex set (square grid) unless `bipartite`, in which case
 # rows are indexed by the unique `I_plot` and columns by the unique `J_plot`.
@@ -275,8 +267,7 @@ function draw_vector_panels!(parent, var_data, x_vecs, x_label, var_name,
     legend_handles = []
     axes = Axis[]
     for (k, data_idx) in enumerate(selected_indices)
-        grid_row = div(k - 1, n_cols) + 1
-        grid_col = mod(k - 1, n_cols) + 1
+        grid_row, grid_col = vector_grid_cell(k, n_cols)
         ax = Axis(parent[grid_row, grid_col];
                   title=entry_label(var_name, data_idx), xlabel=x_label, yscale=yscale)
         push!(axes, ax)
@@ -311,4 +302,118 @@ function draw_matrix_panels!(gl, var_data, x_vecs, x_label, var_name,
         end
     end
     return axes, legend_handles
+end
+
+# Each solver's tuple of (real, imag) matrices must have matching sizes.
+function validate_polar_pair_dims(var_data)
+    for (i, (real_part, imag_part)) in enumerate(var_data)
+        size(real_part) == size(imag_part) || throw(DimensionMismatch(
+            "Real and imaginary parts of solver $(i) have different sizes: $(size(real_part)) vs $(size(imag_part))"))
+    end
+end
+
+# Convert Cartesian (real, imag) components to polar (radius, angle in radians).
+polar_coordinates(real_part::AbstractMatrix, imag_part::AbstractMatrix) =
+    hypot.(real_part, imag_part), atan.(imag_part, real_part)
+
+# Marker size range used to encode the instance parameter `x` in polar plots.
+const POLAR_MIN_MARKERSIZE = 4.0
+const POLAR_MAX_MARKERSIZE = 18.0
+
+# Map each solver's `x` linearly onto [POLAR_MIN_MARKERSIZE, POLAR_MAX_MARKERSIZE] using the
+# global x range across solvers, so sizes are comparable between solvers. Returns the per-solver
+# size vectors and `(x value, marker size)` pairs for the legend key.
+function x_marker_sizes(x_vecs; n_legend_entries::Int=3)
+    x_min = minimum(minimum, x_vecs)
+    x_max = maximum(maximum, x_vecs)
+    size_span = POLAR_MAX_MARKERSIZE - POLAR_MIN_MARKERSIZE
+    if x_max > x_min
+        to_size = v -> POLAR_MIN_MARKERSIZE + size_span * (v - x_min) / (x_max - x_min)
+        legend_x_values = range(x_min, x_max, length=n_legend_entries)
+    else
+        to_size = _ -> POLAR_MIN_MARKERSIZE + size_span / 2
+        legend_x_values = [x_min]
+    end
+    marker_sizes = [to_size.(x_vec) for x_vec in x_vecs]
+    return marker_sizes, [(v, to_size(v)) for v in legend_x_values]
+end
+
+# Legend below the polar panels: one group for solver colors and one for the marker-size key
+# of the instance parameter.
+function add_polar_legend!(legend_cell, solver_colors, solver_names, size_key, x_label)
+    solver_handles = [MarkerElement(marker=:circle, color=color,
+                                    markersize=(POLAR_MIN_MARKERSIZE + POLAR_MAX_MARKERSIZE) / 2)
+                      for color in solver_colors]
+    size_handles = [MarkerElement(marker=:circle, color=:gray50, markersize=marker_size)
+                    for (_, marker_size) in size_key]
+    size_labels = [string(round(x_value; sigdigits=3)) for (x_value, _) in size_key]
+    Legend(legend_cell, [solver_handles, size_handles], [solver_names, size_labels],
+           ["Solver", x_label]; orientation=:horizontal, tellwidth=false, tellheight=true)
+end
+
+# Radial ticks for a PolarAxis whose radii were transformed by `rscale`: ticks are placed in
+# transformed space but labeled with untransformed radii. Labels are always `RichText`, because
+# PolarAxis fixes the label type at construction and errors if the automatic formatter later
+# switches between `String` and `RichText` (e.g. scientific notation for large radii).
+function polar_rticks(rscale)
+    inverse = Makie.inverse_transform(rscale)
+    return function (rmin_scaled, rmax_scaled)
+        tick_radii, tick_labels = polar_tick_radii_and_labels(rscale, inverse(rmin_scaled),
+                                                              inverse(rmax_scaled))
+        return rscale.(tick_radii),
+               [label isa Makie.RichText ? label : rich(label) for label in tick_labels]
+    end
+end
+
+polar_tick_radii_and_labels(rscale, rmin, rmax) =
+    Makie.get_ticks(Makie.automatic, rscale, Makie.automatic, rmin, rmax)
+
+# Maximum number of ticks (besides 0) on a symlog radial axis.
+const POLAR_MAX_SYMLOG_TICKS = 4
+
+# Symlog radii: 0 plus log-spaced ticks between the linear threshold and `rmax`, thinned by a
+# uniform stride to at most POLAR_MAX_SYMLOG_TICKS. Decade ticks (10^k) are used when at least
+# two decades fit; otherwise 1-2-5 ticks fill the narrower range. Unlike Makie's `SymlogTicks`,
+# decades below 1 are allowed, so small radii also get log-spaced ticks.
+function polar_tick_radii_and_labels(rscale::Makie.Symlog10, rmin, rmax)
+    linthresh = rscale.upper
+    exponents = floor(Int, log10(linthresh)):floor(Int, log10(rmax))
+    decade_radii = filter(radius -> linthresh <= radius <= rmax, exp10.(exponents))
+    use_decades = length(decade_radii) >= 2
+    candidate_radii = use_decades ? decade_radii :
+        filter(radius -> linthresh <= radius <= rmax,
+               [mantissa * exp10(k) for k in exponents for mantissa in (1, 2, 5)])
+    length(candidate_radii) >= 2 || return Makie.get_ticks(Makie.automatic, identity,
+                                                           Makie.automatic, rmin, rmax)
+
+    # Keep the largest candidate and step down from it, so the outermost tick is closest to the rim.
+    stride = cld(length(candidate_radii), POLAR_MAX_SYMLOG_TICKS)
+    shown_radii = reverse(reverse(candidate_radii)[1:stride:end])
+    shown_labels = use_decades ?
+        [rich("10", superscript(string(round(Int, log10(radius))), offset=Vec2f(0.1, 0.0)))
+         for radius in shown_radii] :
+        Makie.get_ticklabels(Makie.automatic, shown_radii)
+    return [0.0; shown_radii], [rich("0"); shown_labels]
+end
+
+# Draw one PolarAxis per panel into `parent` (a Figure or GridLayout). Panel `k` is placed at
+# `panel_cells[k]` and shows row `data_indices[k]` of every solver's data. Radii are plotted after
+# applying `rscale` (PolarAxis has no radial scale attribute). Every panel uses the transformed
+# radius range [0, rmax_scaled], since PolarAxis cannot be linked.
+function draw_polar_panels!(parent, radius_data, angle_data, marker_sizes, panel_cells,
+                            panel_titles, data_indices, solver_colors, rmax_scaled;
+                            rscale=identity, alpha=1.0)
+    axes = PolarAxis[]
+    for (k, data_idx) in enumerate(data_indices)
+        grid_row, grid_col = panel_cells[k]
+        ax = PolarAxis(parent[grid_row, grid_col]; title=panel_titles[k],
+                       rticks=polar_rticks(rscale), rtickangle=π / 2)
+        push!(axes, ax)
+        for (i, (radius, angle)) in enumerate(zip(radius_data, angle_data))
+            scatter!(ax, angle[data_idx, :], rscale.(radius[data_idx, :]);
+                     markersize=marker_sizes[i], color=solver_colors[i], alpha=alpha)
+        end
+        rlims!(ax, 0, rmax_scaled)
+    end
+    return axes
 end

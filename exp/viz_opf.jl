@@ -377,7 +377,7 @@ function plot_sparse_variable_opf(
         fig = plot_sparse_variable(x, solvers_data...; solver_names, var_name, xlabel, symlog,
                                    atol, colormap, markersize, alpha)
 
-        _add_figure_title!(fig, 0, "$(system_name): $(var_name)")
+        _add_figure_title!(fig, 0, "$(system_name): $(var_name) (atol=$(atol))")
 
         output_path = joinpath(output_dir, "$(system_name)_$(var_name)_sparse.png")
         save(output_path, fig)
