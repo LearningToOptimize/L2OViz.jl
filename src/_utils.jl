@@ -176,23 +176,12 @@ function symlog_linthresh_from_values(values)
     return clamp(min_nonzero_abs, max_abs / 10.0^SYMLOG_MAX_DECADES, max_abs)
 end
 
-# Symlog linear-threshold over the given entries of every solver's data (and all frames for
-# 3D data).
-symlog_linthresh(var_data, entry_indices) = symlog_linthresh_from_values(
-    (value for k in entry_indices for d in var_data for value in entry_values(d, k)))
-
-function resolve_yscale(symlog::Bool, var_data, entry_indices)
-    symlog || return identity
-    linthresh = symlog_linthresh(var_data, entry_indices)
-    if isnothing(linthresh)
-        @warn "symlog=true, but every displayed value is zero; falling back to a linear y-axis."
-        return identity
-    end
-    return Makie.Symlog10(linthresh)
-end
+# Axis scale for the given entries of every solver's data (and all frames for 3D data).
+resolve_yscale(symlog::Bool, var_data, entry_indices) = resolve_symlog_transform(
+    symlog, (value for k in entry_indices for d in var_data for value in entry_values(d, k)))
 
 # Resolve a symlog axis transform from a flat iterable of values, falling back to `identity`
-# when a symlog scale is not meaningful (every value is zero). Used for the histogram x-axis.
+# when a symlog scale is not meaningful (every value is zero).
 function resolve_symlog_transform(symlog::Bool, values)
     symlog || return identity
     linthresh = symlog_linthresh_from_values(values)
@@ -248,6 +237,9 @@ function vector_grid_layout(n_plot::Int)
     return n_rows, n_cols
 end
 
+# Grid cell `(row, col)` of the `k`-th panel in a row-major vector layout with `n_cols` columns.
+vector_grid_cell(k::Int, n_cols::Int) = (div(k - 1, n_cols) + 1, mod(k - 1, n_cols) + 1)
+
 # Compute dimensions `(n_rows, n_cols)` of the plot grid and the mapping (i, j) → grid cell.
 # Rows and columns share one sorted vertex set (square grid) unless `bipartite`, in which case
 # rows are indexed by the unique `I_plot` and columns by the unique `J_plot`.
@@ -275,8 +267,7 @@ function draw_vector_panels!(parent, var_data, x_vecs, x_label, var_name,
     legend_handles = []
     axes = Axis[]
     for (k, data_idx) in enumerate(selected_indices)
-        grid_row = div(k - 1, n_cols) + 1
-        grid_col = mod(k - 1, n_cols) + 1
+        grid_row, grid_col = vector_grid_cell(k, n_cols)
         ax = Axis(parent[grid_row, grid_col];
                   title=entry_label(var_name, data_idx), xlabel=x_label, yscale=yscale)
         push!(axes, ax)
@@ -402,8 +393,7 @@ function polar_tick_radii_and_labels(rscale::Makie.Symlog10, rmin, rmax)
         [rich("10", superscript(string(round(Int, log10(radius))), offset=Vec2f(0.1, 0.0)))
          for radius in shown_radii] :
         Makie.get_ticklabels(Makie.automatic, shown_radii)
-    return [0.0; shown_radii], [rich("0"); [label isa Makie.RichText ? label : rich(label)
-                                            for label in shown_labels]]
+    return [0.0; shown_radii], [rich("0"); shown_labels]
 end
 
 # Draw one PolarAxis per panel into `parent` (a Figure or GridLayout). Panel `k` is placed at

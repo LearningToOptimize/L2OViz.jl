@@ -46,15 +46,12 @@ function plot_polar_variable(x, var_data::Tuple{AbstractMatrix, AbstractMatrix}.
     selected_indices = select_variable_entries(entry_scores, vis_threshold)
 
     n_rows, n_cols = vector_grid_layout(length(selected_indices))
-    panel_cells = [(div(k - 1, n_cols) + 1, mod(k - 1, n_cols) + 1)
-                   for k in eachindex(selected_indices)]
+    panel_cells = [vector_grid_cell(k, n_cols) for k in eachindex(selected_indices)]
     panel_titles = [entry_label(var_name, data_idx) for data_idx in selected_indices]
 
-    fig = Figure(size=(320 * n_cols, 320 * n_rows + 100))
-    draw_polar_figure!(fig, fig, n_rows + 1, 1:n_cols, radius_data, angle_data, x_vecs,
-                       panel_cells, panel_titles, selected_indices, solver_names, x_label,
-                       palette; symlog=symlog, alpha=alpha)
-    return fig
+    return polar_figure(n_rows, n_cols, radius_data, angle_data, x_vecs, panel_cells,
+                        panel_titles, selected_indices, solver_names, x_label, palette;
+                        symlog=symlog, alpha=alpha)
 end
 
 """
@@ -98,12 +95,9 @@ function plot_polar_graph_variable(I::Vector{Int}, J::Vector{Int}, x,
     panel_cells = [grid_pos(i, j) for (i, j) in zip(I_plot, J_plot)]
     panel_titles = [entry_label(var_name, i, j) for (i, j) in zip(I_plot, J_plot)]
 
-    fig = Figure(size=(320 * n_cols, 320 * n_rows + 100))
-    gl = fig[1, 1] = GridLayout(n_rows, n_cols)
-    draw_polar_figure!(fig, gl, 2, 1, radius_data, angle_data, x_vecs,
-                       panel_cells, panel_titles, selected_indices, solver_names, x_label,
-                       palette; symlog=symlog, alpha=alpha)
-    return fig
+    return polar_figure(n_rows, n_cols, radius_data, angle_data, x_vecs, panel_cells,
+                        panel_titles, selected_indices, solver_names, x_label, palette;
+                        symlog=symlog, alpha=alpha)
 end
 
 # Validate the (real, imag) tuples and convert them to polar coordinates. Returns per-solver
@@ -121,26 +115,25 @@ function prepare_polar_inputs(x, var_data, solver_names, xlabel)
     return radius_data, angle_data, n_entries, x_vecs, solver_names, x_label
 end
 
-# Draw the polar panels into `panel_parent` and the legend at `fig[legend_row, legend_cols]`.
-function draw_polar_figure!(fig, panel_parent, legend_row, legend_cols, radius_data, angle_data,
-                            x_vecs, panel_cells, panel_titles, data_indices, solver_names,
-                            x_label, palette; symlog::Bool=false, alpha=1.0)
+# Build a figure with an `n_rows × n_cols` grid of polar panels and the legend below it.
+function polar_figure(n_rows, n_cols, radius_data, angle_data, x_vecs, panel_cells,
+                      panel_titles, data_indices, solver_names, x_label, palette;
+                      symlog::Bool=false, alpha=1.0)
     solver_colors = solver_palette(length(radius_data), palette)
     marker_sizes, size_key = x_marker_sizes(x_vecs)
-
-    displayed_radii = (radius for k in data_indices for d in radius_data
-                       for radius in entry_values(d, k))
-    rscale = resolve_symlog_transform(symlog, displayed_radii)
+    rscale = resolve_yscale(symlog, radius_data, data_indices)
 
     # Shared radius range over the displayed entries with 5% headroom (in transformed space) so
     # markers at the largest radius are not clipped by the rim; fall back to 1 if every radius
     # is zero.
-    max_radius = maximum(displayed_radii)
+    _, max_radius = data_extrema(radius_data, data_indices)
     rmax_scaled = max_radius > 0 ? 1.05 * rscale(max_radius) : 1.0
 
-    draw_polar_panels!(panel_parent, radius_data, angle_data, marker_sizes, panel_cells,
+    fig = Figure(size=(320 * n_cols, 320 * n_rows + 100))
+    panel_grid = fig[1, 1] = GridLayout(n_rows, n_cols)
+    draw_polar_panels!(panel_grid, radius_data, angle_data, marker_sizes, panel_cells,
                        panel_titles, data_indices, solver_colors, rmax_scaled;
                        rscale=rscale, alpha=alpha)
-    add_polar_legend!(fig[legend_row, legend_cols], solver_colors, solver_names, size_key,
-                      x_label)
+    add_polar_legend!(fig[2, 1], solver_colors, solver_names, size_key, x_label)
+    return fig
 end
